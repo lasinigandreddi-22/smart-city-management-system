@@ -1,5 +1,5 @@
 ﻿# SMART CITY MANAGEMENT SYSTEM
-## Simple B.Tech 3rd Year OOAD Lab Review-2 UML Design Diagrams
+## Simple B.Tech 3rd Year OOAD Lab UML Design Diagrams
 
 ---
 
