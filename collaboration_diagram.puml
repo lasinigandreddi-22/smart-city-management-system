@@ -1,0 +1,39 @@
+@startuml
+!theme plain
+skinparam defaultFontName "Segoe UI"
+skinparam defaultFontSize 12
+skinparam shadowing false
+skinparam roundcorner 8
+skinparam nodesep 60
+skinparam ranksep 50
+
+title Communication Diagram - Complaint Management
+
+rectangle "Admin" as admin
+rectangle "Database" as db
+
+rectangle "Citizen" as citizen
+rectangle "Complaint Service" as service
+rectangle "Notification Service" as notif
+
+rectangle "Service Department" as dept
+
+' 2D clean placement without overlap
+admin -[hidden]down- citizen
+db -[hidden]down- notif
+citizen -[hidden]right- service
+service -[hidden]right- notif
+service -[hidden]down- dept
+
+' Simple numbered messages
+citizen -> service : 1: Submit Complaint
+service -> service : 2: Validate Complaint
+service -> db : 3: Save Complaint
+admin -> service : 4: Review Complaint
+4.1: Assign Department
+dept -> service : 5: Process Complaint
+dept -> db : 6: Update Status
+service -> notif : 7: Notify Citizen
+notif -> citizen : 8: Deliver Notification
+
+@enduml

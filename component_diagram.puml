@@ -1,0 +1,51 @@
+@startuml
+!theme plain
+skinparam shadowing false
+skinparam defaultFontName "Segoe UI"
+skinparam defaultFontSize 12
+skinparam roundcorner 6
+
+title Component Diagram - Smart City Management System
+
+package "User Interface Layer" {
+    [Citizen UI] as citizenUI
+    [Admin UI] as adminUI
+}
+
+package "Management Modules" {
+    [Citizen Services] as citizenSvc
+    [Water Management] as waterMgmt
+    [Electricity Management] as elecMgmt
+    [Complaint Management] as complaintMgmt
+    [Traffic Management] as trafficMgmt
+    [Property Tax] as propTax
+}
+
+package "Services & Database" {
+    [Notification Service] as notifSvc
+    database "Database" as db
+}
+
+' Simple Dependency Flow
+citizenUI ..> citizenSvc
+citizenUI ..> complaintMgmt
+citizenUI ..> propTax
+
+adminUI ..> citizenSvc
+adminUI ..> complaintMgmt
+adminUI ..> waterMgmt
+adminUI ..> elecMgmt
+adminUI ..> trafficMgmt
+adminUI ..> propTax
+
+complaintMgmt ..> notifSvc
+citizenSvc ..> notifSvc
+
+citizenSvc ..> db
+complaintMgmt ..> db
+waterMgmt ..> db
+elecMgmt ..> db
+trafficMgmt ..> db
+propTax ..> db
+
+@enduml

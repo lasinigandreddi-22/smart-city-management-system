@@ -1,0 +1,40 @@
+@startuml
+!theme plain
+skinparam shadowing false
+skinparam defaultFontName "Segoe UI"
+skinparam defaultFontSize 12
+skinparam roundcorner 6
+
+title Object Diagram - Smart City Management System
+
+object "citizen1 : Citizen" as citizen1 {
+    citizenId = 101
+    name = "Ravi"
+}
+
+object "admin1 : Admin" as admin1 {
+    adminId = 1
+    name = "Suresh"
+}
+
+object "department1 : ServiceDepartment" as department1 {
+    deptId = 201
+    deptName = "Water Department"
+}
+
+object "complaint1 : Complaint" as complaint1 {
+    complaintId = 501
+    status = "In Progress"
+}
+
+object "notification1 : Notification" as notification1 {
+    notificationId = 801
+    message = "Complaint Assigned"
+}
+
+citizen1 -- complaint1 : lodges
+admin1 -- complaint1 : reviews
+department1 -- complaint1 : resolves
+citizen1 -- notification1 : receives
+
+@enduml

@@ -1,0 +1,119 @@
+@startuml
+!theme plain
+skinparam actorStyle stickman
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam defaultFontName "Segoe UI"
+skinparam defaultFontSize 12
+skinparam roundcorner 8
+skinparam nodesep 14
+skinparam ranksep 28
+
+skinparam usecase {
+    BackgroundColor #FFFFFF
+    BorderColor #2C3E50
+    BorderThickness 1.2
+}
+skinparam actor {
+    BorderColor #2C3E50
+    BackgroundColor #FFFFFF
+}
+skinparam rectangle {
+    BorderColor #2C3E50
+    BorderThickness 1.5
+}
+
+title Use Case Diagram - Smart City Management System
+
+left to right direction
+
+' Left Actors
+actor "Citizen" as citizen
+actor "Traffic Officer" as officer
+
+rectangle "Smart City Management System" {
+    
+    ' Left Column: Citizen & Traffic Use Cases
+    usecase "Register" as UC_Reg
+    usecase "Login" as UC_Login
+    usecase "View Citizen Services" as UC_ViewServices
+    usecase "Request Water Service" as UC_ReqWater
+    usecase "View Electricity Information" as UC_ViewElec
+    usecase "Submit Complaint" as UC_SubComplaint
+    usecase "Track Complaint" as UC_TrackComplaint
+    usecase "View Property Tax" as UC_ViewTax
+    usecase "View Traffic Information" as UC_ViewTraffic
+    usecase "Receive Notifications" as UC_RecNotif
+    
+    usecase "Monitor Traffic" as UC_MonTraffic
+    usecase "Update Traffic Information" as UC_UpdTraffic
+    usecase "Manage Traffic Incidents" as UC_ManIncidents
+
+    ' Right Column: Admin & Service Department Use Cases
+    usecase "Manage Citizens" as UC_AdmCitizens
+    usecase "Manage Citizen Services" as UC_AdmServices
+    usecase "Manage Water" as UC_AdmWater
+    usecase "Manage Electricity" as UC_AdmElec
+    usecase "Manage Complaints" as UC_AdmComplaints
+    usecase "Manage Traffic" as UC_AdmTraffic
+    usecase "Manage Property Tax" as UC_AdmTax
+    usecase "Generate Reports" as UC_GenReports
+
+    usecase "View Assigned Complaints" as UC_ViewAssigned
+    usecase "Process Complaint" as UC_ProcComplaint
+    usecase "Update Complaint Status" as UC_UpdStatus
+    usecase "Resolve Complaint" as UC_ResComplaint
+
+    ' Balanced column alignment
+    UC_Reg -[hidden]-> UC_AdmCitizens
+    UC_Login -[hidden]-> UC_AdmServices
+    UC_ViewServices -[hidden]-> UC_AdmWater
+    UC_ReqWater -[hidden]-> UC_AdmElec
+    UC_ViewElec -[hidden]-> UC_AdmComplaints
+    UC_SubComplaint -[hidden]-> UC_AdmTraffic
+    UC_TrackComplaint -[hidden]-> UC_AdmTax
+    UC_ViewTax -[hidden]-> UC_GenReports
+    UC_ViewTraffic -[hidden]-> UC_ViewAssigned
+    UC_RecNotif -[hidden]-> UC_ProcComplaint
+    UC_MonTraffic -[hidden]-> UC_UpdStatus
+    UC_UpdTraffic -[hidden]-> UC_ResComplaint
+}
+
+' Right Actors
+actor "Admin" as admin
+actor "Service Department" as dept
+
+' Citizen Associations (Simple lines without arrowheads)
+citizen -- UC_Reg
+citizen -- UC_Login
+citizen -- UC_ViewServices
+citizen -- UC_ReqWater
+citizen -- UC_ViewElec
+citizen -- UC_SubComplaint
+citizen -- UC_TrackComplaint
+citizen -- UC_ViewTax
+citizen -- UC_ViewTraffic
+citizen -- UC_RecNotif
+
+' Traffic Officer Associations
+officer -- UC_MonTraffic
+officer -- UC_UpdTraffic
+officer -- UC_ManIncidents
+
+' Admin Associations
+UC_AdmCitizens -- admin
+UC_AdmServices -- admin
+UC_AdmWater -- admin
+UC_AdmElec -- admin
+UC_AdmComplaints -- admin
+UC_AdmTraffic -- admin
+UC_AdmTax -- admin
+UC_GenReports -- admin
+
+' Service Department Associations
+UC_ViewAssigned -- dept
+UC_ProcComplaint -- dept
+UC_UpdStatus -- dept
+UC_ResComplaint -- dept
+
+@enduml

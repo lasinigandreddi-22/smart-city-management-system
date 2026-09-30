@@ -1,0 +1,33 @@
+@startuml
+!theme plain
+skinparam shadowing false
+skinparam defaultFontName "Segoe UI"
+skinparam defaultFontSize 12
+skinparam roundcorner 6
+
+title Package Diagram - Smart City Management System
+
+package "Administration" as pkgAdmin
+package "Citizen Services" as pkgCitizenSvc
+package "Complaint Management" as pkgComplaint
+package "Property Tax" as pkgTax
+
+package "Water" as pkgWater
+package "Electricity" as pkgElec
+package "Traffic" as pkgTraffic
+package "Notification" as pkgNotif
+
+' Simple package dependencies
+pkgAdmin ..> pkgCitizenSvc
+pkgAdmin ..> pkgComplaint
+
+pkgCitizenSvc ..> pkgComplaint
+pkgCitizenSvc ..> pkgNotif
+
+pkgComplaint ..> pkgWater
+pkgComplaint ..> pkgElec
+pkgComplaint ..> pkgNotif
+
+pkgTax ..> pkgNotif
+
+@enduml

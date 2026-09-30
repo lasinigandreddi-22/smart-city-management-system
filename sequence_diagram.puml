@@ -1,0 +1,32 @@
+@startuml
+!theme plain
+skinparam shadowing false
+skinparam defaultFontName "Segoe UI"
+skinparam defaultFontSize 12
+skinparam roundcorner 6
+hide footbox
+autonumber
+
+title Sequence Diagram - Citizen Submits Complaint
+
+actor "Citizen" as citizen
+participant "Smart City System" as system
+participant "Complaint Service" as service
+database "Database" as db
+actor "Admin" as admin
+actor "Service Department" as dept
+participant "Notification Service" as notif
+
+citizen -> system : Login
+citizen -> system : Submit Complaint
+system -> service : Validate Complaint
+service -> db : Save Complaint
+admin -> service : Review Complaint
+admin -> service : Assign Department
+dept -> service : Process Complaint
+dept -> service : Resolve Complaint
+dept -> db : Update Status
+service -> notif : Notify Citizen
+notif -> citizen : Deliver Notification
+
+@enduml

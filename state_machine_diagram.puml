@@ -1,0 +1,21 @@
+@startuml
+!theme plain
+skinparam shadowing false
+skinparam defaultFontName "Segoe UI"
+skinparam defaultFontSize 12
+skinparam roundcorner 8
+
+title State Machine Diagram - Complaint
+
+[*] --> New
+New --> Submitted
+Submitted --> Assigned
+Assigned --> InProgress : In Progress
+InProgress --> Resolved
+Resolved --> Closed
+Closed --> [*]
+
+Submitted --> Rejected
+Rejected --> [*]
+
+@enduml

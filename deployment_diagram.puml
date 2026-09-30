@@ -1,0 +1,23 @@
+@startuml
+!theme plain
+skinparam shadowing false
+skinparam defaultFontName "Segoe UI"
+skinparam defaultFontSize 12
+skinparam roundcorner 6
+
+title Deployment Diagram - Smart City Management System
+
+node "Citizen Device" as citizenDev
+node "Admin Device" as adminDev
+node "Traffic Sensors" as sensors
+
+node "Application Server\n(Spring Boot)" as appServer
+node "Database Server\n(MySQL)" as dbServer
+
+citizenDev --> appServer
+adminDev --> appServer
+sensors --> appServer
+
+appServer --> dbServer
+
+@enduml

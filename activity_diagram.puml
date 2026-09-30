@@ -1,0 +1,48 @@
+@startuml
+!theme plain
+skinparam shadowing false
+skinparam defaultFontName "Segoe UI"
+skinparam defaultFontSize 12
+
+title Activity Diagram - Complaint Management Process
+
+|Citizen|
+start
+:Citizen Login;
+:Select Complaint;
+
+label enter_details
+:Enter Complaint Details;
+
+|Smart City System|
+:Validate Details;
+
+if (Valid?) then (YES)
+    |Citizen|
+    :Submit Complaint;
+    
+    |Smart City System|
+    :Save Complaint;
+    
+    |Admin|
+    :Admin Reviews Complaint;
+    :Assign Department;
+    
+    |Service Department|
+    :Department Processes Complaint;
+    :Resolve Complaint;
+    :Update Complaint Status;
+    
+    |Smart City System|
+    :Notify Citizen;
+    
+    |Citizen|
+    :Receive Notification;
+    stop
+else (NO)
+    :Show Error;
+    |Citizen|
+    goto enter_details
+endif
+
+@enduml

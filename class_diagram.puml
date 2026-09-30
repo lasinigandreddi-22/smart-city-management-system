@@ -1,0 +1,126 @@
+@startuml
+!theme plain
+skinparam classAttributeIconSize 0
+skinparam shadowing false
+skinparam defaultFontName "Segoe UI"
+skinparam defaultFontSize 12
+skinparam roundcorner 6
+
+title Class Diagram - Smart City Management System
+
+class Citizen {
+    + citizenId : int
+    + name : String
+    + email : String
+    + phone : String
+    + register() : void
+    + login() : void
+}
+
+class Admin {
+    + adminId : int
+    + name : String
+    + email : String
+    + manageUsers() : void
+    + generateReport() : void
+}
+
+class ServiceDepartment {
+    + deptId : int
+    + deptName : String
+    + email : String
+    + processComplaint() : void
+    + resolveComplaint() : void
+}
+
+class TrafficOfficer {
+    + officerId : int
+    + name : String
+    + assignedZone : String
+    + updateTraffic() : void
+}
+
+class Complaint {
+    + complaintId : int
+    + description : String
+    + status : String
+    + priority : String
+    + submitComplaint() : void
+    + trackComplaint() : void
+}
+
+class ServiceRequest {
+    + requestId : int
+    + serviceType : String
+    + requestDate : String
+    + status : String
+    + createRequest() : void
+}
+
+class CityService {
+    + serviceId : int
+    + serviceName : String
+    + department : String
+    + getDetails() : void
+}
+
+class WaterService {
+    + connectionId : int
+    + meterNo : String
+    + consumption : float
+    + viewBill() : void
+}
+
+class ElectricityService {
+    + consumerNo : int
+    + meterNo : String
+    + unitsConsumed : float
+    + viewBill() : void
+}
+
+class TrafficRecord {
+    + recordId : int
+    + location : String
+    + trafficStatus : String
+    + logTraffic() : void
+}
+
+class PropertyTax {
+    + taxId : int
+    + propertyNo : String
+    + amount : double
+    + status : String
+    + calculateTax() : void
+}
+
+class Payment {
+    + paymentId : int
+    + amount : double
+    + paymentDate : String
+    + makePayment() : void
+}
+
+class Notification {
+    + notificationId : int
+    + message : String
+    + date : String
+    + sendNotification() : void
+}
+
+' Correct Logical Inheritance: WaterService & ElectricityService extend CityService
+CityService <|-- WaterService
+CityService <|-- ElectricityService
+
+' Simple Associations & Essential Multiplicities
+Citizen "1" -- "*" Complaint : lodges
+Citizen "1" -- "*" ServiceRequest : submits
+Citizen "1" -- "*" PropertyTax : pays
+Citizen "1" -- "*" Notification : receives
+
+CityService "1" -- "*" ServiceRequest : relates to
+Admin "1" -- "*" Complaint : reviews
+ServiceDepartment "1" -- "*" Complaint : resolves
+TrafficOfficer "1" -- "*" TrafficRecord : updates
+PropertyTax "1" -- "1" Payment : paid by
+
+@enduml
