@@ -1,0 +1,12 @@
+{
+  "name": "smart-city-management-system",
+  "version": "1.0.0",
+  "description": "Smart City Management System - Academic OOAD Prototype",
+  "scripts": {
+    "dev": "npm --prefix frontend run dev",
+    "start": "npm --prefix frontend run dev",
+    "build": "npm --prefix frontend run build",
+    "setup": "powershell -ExecutionPolicy Bypass -File .\\setup.ps1",
+    "start:both": "powershell -ExecutionPolicy Bypass -File .\\run_servers.ps1"
+  }
+}
