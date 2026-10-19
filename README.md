@@ -6,6 +6,8 @@
 [![Tailwind CSS](https://img.shields.io/badge/Styling-Tailwind%20CSS%20v4-38bdf8?style=flat&logo=tailwindcss)](https://tailwindcss.com/)
 [![Database](https://img.shields.io/badge/Database-SQLite3%20Persistent-003B57?style=flat&logo=sqlite)](https://www.sqlite.org/)
 [![Status](https://img.shields.io/badge/Tests-5%20Passed-emerald?style=flat)](#testing-and-verification)
+﻿# SMART CITY MANAGEMENT SYSTEM
+## Simple B.Tech 3rd Year OOAD Lab UML Design Diagrams
 
 ---
 
