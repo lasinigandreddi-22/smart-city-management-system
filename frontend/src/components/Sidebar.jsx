@@ -80,8 +80,8 @@ export default function Sidebar({ isOpen, onClose }) {
               SC
             </div>
             <div>
-              <h2 className="text-sm font-bold text-white tracking-wide">SmartCity Portal</h2>
-              <p className="text-[10px] text-teal-400 font-medium">OOAD Lab Review</p>
+              <h2 className="text-sm font-bold text-white tracking-wide">Smart City</h2>
+              <p className="text-[10px] text-teal-400 font-medium">Management System</p>
             </div>
           </div>
           <button

@@ -295,7 +295,7 @@ System check identified no issues (0 silenced).
 
 ## 9. UML and OOAD Alignment Mapping
 
-This prototype directly realizes the design artifacts created for the B.Tech 3rd-year OOAD Lab Review-2. The table below details how each UML diagram maps to concrete code implementations in this repository:
+This prototype directly realizes the design artifacts created for the Smart City Management System. The table below details how each UML diagram maps to concrete code implementations in this repository:
 
 | # | UML Diagram | Diagram File | Category | How It Maps to Prototype Implementation |
 |---|---|---|---|---|

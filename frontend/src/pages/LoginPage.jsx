@@ -158,7 +158,7 @@ export default function LoginPage() {
           </form>
 
           <div className="mt-6 pt-4 border-t border-slate-100 text-center text-xs text-slate-500">
-            <p>OOAD Academic Demonstration Environment</p>
+            <p className="font-medium text-slate-700">Smart City Management System</p>
             <p className="text-[11px] text-slate-400 mt-1">
               SQLite Persistent Database • Django REST • React Vite
             </p>

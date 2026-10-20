@@ -47,7 +47,7 @@ export default function Navbar({ onMobileMenuToggle }) {
           </span>
           <span className="text-slate-400 hidden sm:inline">|</span>
           <span className="text-xs font-semibold px-2 py-0.5 rounded bg-slate-100 text-slate-600 hidden md:inline">
-            OOAD Lab Prototype
+            Management System
           </span>
         </div>
       </div>

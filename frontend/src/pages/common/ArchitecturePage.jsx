@@ -108,11 +108,11 @@ export default function ArchitecturePage() {
           </div>
           <div>
             <span className="text-[11px] font-bold text-blue-600 uppercase tracking-wider">
-              Academic Lab Review-2 Showcase
+              Smart City System Architecture
             </span>
-            <h1 className="text-xl font-bold text-slate-900 mt-1">OOAD & UML Architecture Mapping</h1>
+            <h1 className="text-xl font-bold text-slate-900 mt-1">Smart City UML Architecture Mapping</h1>
             <p className="text-xs text-slate-500">
-              Direct conceptual and code alignment between the 10 UML lab design diagrams and this working full-stack prototype
+              Direct conceptual and code alignment between the 10 UML design diagrams and this working full-stack prototype
             </p>
           </div>
         </div>

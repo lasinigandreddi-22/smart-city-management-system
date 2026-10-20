@@ -112,7 +112,7 @@ export default function TrafficManagementPage() {
       <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl flex items-center space-x-2 text-xs text-amber-800">
         <AlertTriangle className="w-4 h-4 shrink-0 text-amber-600" />
         <span>
-          <strong>Demonstration Data:</strong> All traffic incidents, road closures, and sensor feeds are simulated for academic OOAD demonstration purposes.
+          <strong>Demonstration Data:</strong> All traffic incidents, road closures, and sensor feeds are simulated demonstration data for the Smart City Management System.
         </span>
       </div>
 

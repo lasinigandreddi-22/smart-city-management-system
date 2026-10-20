@@ -1,4 +1,5 @@
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000/api';
+const rawApiUrl = (import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000/api').replace(/\/+$/, '');
+const API_BASE_URL = rawApiUrl.endsWith('/api') ? rawApiUrl : `${rawApiUrl}/api`;
 
 async function request(endpoint, options = {}) {
   const token = localStorage.getItem('smartcity_token');
@@ -31,8 +32,8 @@ async function request(endpoint, options = {}) {
 
     return data;
   } catch (err) {
-    if (err.name === 'TypeError' && err.message.includes('fetch')) {
-      throw new Error('Unable to connect to Smart City API server. Please ensure the Django backend is running at http://127.0.0.1:8000.');
+    if (err.name === 'TypeError' && (err.message.includes('fetch') || err.message.includes('Failed to fetch') || err.message.includes('NetworkError'))) {
+      throw new Error(`Unable to connect to Smart City API server at ${API_BASE_URL}. If your cloud server was idle, please allow 30-50 seconds for it to wake up and try again.`);
     }
     throw err;
   }

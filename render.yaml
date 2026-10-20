@@ -1,0 +1,51 @@
+databases:
+  - name: smart-city-db
+    databaseName: smartcity
+    user: smartcity_user
+    plan: free
+
+services:
+  # -------------------------------------------------------------
+  # Django REST Backend API Web Service
+  # -------------------------------------------------------------
+  - type: web
+    name: smart-city-backend
+    runtime: python
+    plan: free
+    buildCommand: "./backend/build.sh"
+    startCommand: "gunicorn --chdir backend config.wsgi:application --bind 0.0.0.0:$PORT"
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.9
+      - key: DEBUG
+        value: "False"
+      - key: SECRET_KEY
+        generateValue: true
+      - key: ALLOWED_HOSTS
+        value: "*"
+      - key: CORS_ALLOW_ALL_ORIGINS
+        value: "True"
+      - key: DATABASE_URL
+        fromDatabase:
+          name: smart-city-db
+          property: connectionString
+
+  # -------------------------------------------------------------
+  # React + Vite Frontend Static Site
+  # -------------------------------------------------------------
+  - type: static_site
+    name: smart-city-frontend
+    rootDir: frontend
+    plan: free
+    buildCommand: "npm install && npm run build"
+    publishDir: dist
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    envVars:
+      - key: VITE_API_BASE_URL
+        fromService:
+          type: web
+          name: smart-city-backend
+          envVarKey: RENDER_EXTERNAL_URL

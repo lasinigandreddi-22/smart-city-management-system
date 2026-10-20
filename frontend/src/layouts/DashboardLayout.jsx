@@ -23,7 +23,7 @@ export default function DashboardLayout() {
         </main>
 
         <footer className="py-4 px-6 border-t border-slate-200 text-center text-xs text-slate-500 bg-white">
-          <p>© 2026 Smart City Management System — B.Tech OOAD Laboratory Project Prototype</p>
+          <p>© 2026 Smart City Management System — All Rights Reserved</p>
         </footer>
       </div>
     </div>
