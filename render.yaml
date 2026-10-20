@@ -33,12 +33,12 @@ services:
   # -------------------------------------------------------------
   # React + Vite Frontend Static Site
   # -------------------------------------------------------------
-  - type: static_site
+  - type: web
     name: smart-city-frontend
+    runtime: static
     rootDir: frontend
-    plan: free
     buildCommand: "npm install && npm run build"
-    publishDir: dist
+    staticPublishPath: dist
     routes:
       - type: rewrite
         source: /*
