@@ -45,7 +45,8 @@ export const api = {
     login: (credentials) => request('/auth/login/', { method: 'POST', body: JSON.stringify(credentials) }),
     logout: () => request('/auth/logout/', { method: 'POST' }),
     getMe: () => request('/auth/me/'),
-    updateProfile: (data) => request('/auth/me/', { method: 'PATCH', body: JSON.stringify(data) }),
+    getProfile: () => request('/auth/profile/'),
+    updateProfile: (data) => request('/auth/profile/', { method: 'PATCH', body: JSON.stringify(data) }),
     getCitizens: () => request('/auth/citizens/'),
   },
 

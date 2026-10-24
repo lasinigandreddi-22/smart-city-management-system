@@ -38,8 +38,6 @@ import AssignedRequestsPage from './pages/department/AssignedRequestsPage';
 import TrafficOfficerDashboard from './pages/traffic_officer/TrafficOfficerDashboard';
 
 // Common Pages
-import ProfilePage from './pages/common/ProfilePage';
-import ArchitecturePage from './pages/common/ArchitecturePage';
 import AccessDeniedPage from './pages/common/AccessDeniedPage';
 
 function RoleBasedHomeRedirect() {
@@ -198,8 +196,7 @@ export default function App() {
             />
 
             {/* Common System Routes */}
-            <Route path="/profile" element={<ProfilePage />} />
-            <Route path="/architecture" element={<ArchitecturePage />} />
+            <Route path="/profile" element={<Navigate to="/" replace />} />
             <Route path="/access-denied" element={<AccessDeniedPage />} />
           </Route>
 

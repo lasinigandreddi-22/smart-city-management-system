@@ -2,7 +2,7 @@ import React from 'react';
 import { NavLink } from 'react-router-dom';
 import { 
   LayoutDashboard, Droplets, Zap, Car, AlertCircle, PlusCircle, 
-  Receipt, Users, ClipboardList, BellRing, Settings, 
+  Receipt, Users, ClipboardList, BellRing, 
   ChevronRight, X
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
@@ -20,7 +20,6 @@ export default function Sidebar({ isOpen, onClose }) {
           { to: '/admin/utility-notices', label: 'Utility Notices', icon: BellRing },
           { to: '/admin/traffic', label: 'Traffic Incidents', icon: Car },
           { to: '/property-tax', label: 'Property Tax Records', icon: Receipt },
-          { to: '/profile', label: 'System Settings', icon: Settings },
         ];
       case 'SERVICE_DEPARTMENT':
         return [
@@ -28,14 +27,12 @@ export default function Sidebar({ isOpen, onClose }) {
           { to: '/department/assigned', label: 'Assigned Work Orders', icon: ClipboardList },
           { to: '/services/water', label: 'Water Service Operations', icon: Droplets },
           { to: '/services/electricity', label: 'Electricity Operations', icon: Zap },
-          { to: '/profile', label: 'Department Profile', icon: Settings },
         ];
       case 'TRAFFIC_OFFICER':
         return [
           { to: '/traffic-officer/dashboard', label: 'Officer Dashboard', icon: LayoutDashboard },
           { to: '/admin/traffic', label: 'Incident Control Center', icon: Car },
           { to: '/services/traffic', label: 'Citizen Road Reports', icon: AlertCircle },
-          { to: '/profile', label: 'Officer Profile', icon: Settings },
         ];
       default: // CITIZEN
         return [
@@ -46,7 +43,6 @@ export default function Sidebar({ isOpen, onClose }) {
           { to: '/services/electricity', label: 'Electricity Services', icon: Zap },
           { to: '/services/traffic', label: 'Traffic Alerts & Reports', icon: Car },
           { to: '/property-tax', label: 'Property Tax & Bills', icon: Receipt },
-          { to: '/profile', label: 'My Profile', icon: Settings },
         ];
     }
   };

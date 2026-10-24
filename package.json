@@ -1,7 +1,7 @@
 {
   "name": "smart-city-management-system",
   "version": "1.0.0",
-  "description": "Smart City Management System - Academic OOAD Prototype",
+  "description": "Smart City Management System - Full-Stack Civic Administration Platform",
   "scripts": {
     "dev": "npm --prefix frontend run dev",
     "start": "npm --prefix frontend run dev",

@@ -81,8 +81,12 @@ export function AuthProvider({ children }) {
 
   const updateProfile = async (formData) => {
     const updated = await api.auth.updateProfile(formData);
-    setUser(updated);
-    return updated;
+    const userData = updated.user || updated;
+    setUser(userData);
+    if (userData.profile?.role) {
+      setRole(userData.profile.role);
+    }
+    return userData;
   };
 
   const value = {

@@ -119,3 +119,65 @@ class SmartCityAPITests(TestCase):
         self.assertEqual(tax.amount_paid, Decimal('10000.00'))
         self.assertEqual(tax.outstanding_balance, Decimal('0.00'))
         self.assertEqual(tax.payment_status, TaxPaymentStatus.PAID)
+
+    def test_get_profile_authenticated(self):
+        self.client.force_authenticate(user=self.citizen1)
+        res = self.client.get('/api/auth/profile/')
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(res.data['username'], 'test_citizen1')
+        self.assertEqual(res.data['role'], 'CITIZEN')
+        self.assertIn('date_joined', res.data)
+        self.assertIn('profile', res.data)
+
+    def test_patch_profile_success(self):
+        self.client.force_authenticate(user=self.citizen1)
+        res = self.client.patch('/api/auth/profile/', {
+            'first_name': 'NewFirst',
+            'last_name': 'NewLast',
+            'email': 'newcitizen1@test.com',
+            'phone': '+91 99999 88888',
+            'address': 'New Address Sector 4'
+        })
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.citizen1.refresh_from_db()
+        self.assertEqual(self.citizen1.first_name, 'NewFirst')
+        self.assertEqual(self.citizen1.last_name, 'NewLast')
+        self.assertEqual(self.citizen1.email, 'newcitizen1@test.com')
+        self.assertEqual(self.citizen1.profile.phone, '+91 99999 88888')
+        self.assertEqual(self.citizen1.profile.address, 'New Address Sector 4')
+
+    def test_cannot_modify_role(self):
+        self.client.force_authenticate(user=self.citizen1)
+        res = self.client.patch('/api/auth/profile/', {
+            'role': 'ADMIN'
+        })
+        self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
+        self.citizen1.refresh_from_db()
+        self.assertEqual(self.citizen1.profile.role, UserRole.CITIZEN)
+
+    def test_cannot_modify_username(self):
+        self.client.force_authenticate(user=self.citizen1)
+        res = self.client.patch('/api/auth/profile/', {
+            'username': 'hacked_name'
+        })
+        self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
+        self.citizen1.refresh_from_db()
+        self.assertEqual(self.citizen1.username, 'test_citizen1')
+
+    def test_user_isolation_cannot_edit_another_profile(self):
+        self.client.force_authenticate(user=self.citizen1)
+        res = self.client.patch('/api/auth/profile/', {
+            'id': self.citizen2.id,
+            'address': 'Attempted change'
+        })
+        self.assertEqual(res.status_code, status.HTTP_403_FORBIDDEN)
+        self.citizen2.refresh_from_db()
+        self.assertNotEqual(self.citizen2.profile.address, 'Attempted change')
+
+    def test_duplicate_email_rejected(self):
+        self.client.force_authenticate(user=self.citizen1)
+        res = self.client.patch('/api/auth/profile/', {
+            'email': 'c2@test.com' # already used by citizen2
+        })
+        self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
+
