@@ -1,35 +1,15 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Shield, Building, Lock, User, ArrowRight, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { Building, Lock, User, ArrowRight, AlertCircle } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 export default function LoginPage() {
-  const [username, setUsername] = useState('citizen1');
-  const [password, setPassword] = useState('Citizen@12345');
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const { login } = useAuth();
   const navigate = useNavigate();
-
-  const demoAccounts = [
-    { label: 'Citizen', role: 'Citizen', username: 'citizen1', password: 'Citizen@12345', desc: 'Lodge complaints, track resolution & durations' },
-    { label: 'Employee', role: 'Employee', username: 'department1', password: 'Dept@12345', desc: 'Water Services (Ward 1) work orders' },
-    { label: 'Area Head', role: 'Area Head', username: 'head1', password: 'Head@12345', desc: 'Ward 1 triage, assign & verify completions' },
-    { label: 'Admin / Commissioner', role: 'Admin', username: 'admin', password: 'Admin@12345', desc: 'City governance & cross-ward oversight' },
-  ];
-
-  const alternateAccounts = [
-    { label: 'Employee (Roads & Traffic)', username: 'traffic1', password: 'Traffic@12345' },
-    { label: 'Employee (Property Tax)', username: 'tax1', password: 'Tax@12345' },
-    { label: 'Area Head (Ward 2)', username: 'head2', password: 'Head@12345' },
-    { label: 'Employee (Water - Ward 2)', username: 'department2', password: 'Dept@12345' },
-  ];
-
-  const handleDemoSelect = (acc) => {
-    setUsername(acc.username);
-    setPassword(acc.password);
-    setError('');
-  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -76,56 +56,6 @@ export default function LoginPage() {
 
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md px-4 sm:px-0">
         <div className="bg-white py-8 px-6 sm:px-10 shadow-xl rounded-2xl border border-slate-200">
-          {/* Demo account quick selector */}
-          <div className="mb-6">
-            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">
-              Select Demo Role (1-Click Fill)
-            </p>
-            <div className="grid grid-cols-2 gap-2">
-              {demoAccounts.map((acc) => (
-                <button
-                  key={acc.label}
-                  type="button"
-                  onClick={() => handleDemoSelect(acc)}
-                  className={`p-2.5 text-left rounded-xl border text-xs transition-all ${
-                    username === acc.username
-                      ? 'border-blue-600 bg-blue-50/70 text-blue-900 font-semibold shadow-xs ring-1 ring-blue-500'
-                      : 'border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100'
-                  }`}
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="font-semibold">{acc.label}</span>
-                    {username === acc.username && <CheckCircle2 className="w-3.5 h-3.5 text-blue-600 shrink-0 ml-1" />}
-                  </div>
-                  <p className="text-[10px] text-slate-500 mt-0.5 line-clamp-1">{acc.desc}</p>
-                </button>
-              ))}
-            </div>
-
-            {/* Other department employee / area head accounts */}
-            <div className="mt-3 pt-2.5 border-t border-slate-100">
-              <span className="text-[10px] font-semibold text-slate-400 block mb-1.5 uppercase tracking-wider">
-                Alternate Department / Ward Accounts:
-              </span>
-              <div className="flex flex-wrap gap-1.5">
-                {alternateAccounts.map((alt) => (
-                  <button
-                    key={alt.label}
-                    type="button"
-                    onClick={() => handleDemoSelect(alt)}
-                    className={`px-2 py-1 text-[11px] rounded-lg border transition-colors ${
-                      username === alt.username
-                        ? 'bg-blue-100 border-blue-400 text-blue-800 font-semibold'
-                        : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
-                    }`}
-                  >
-                    {alt.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-
           {error && (
             <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl flex items-center space-x-2 text-xs text-red-700">
               <AlertCircle className="w-4 h-4 shrink-0 text-red-500" />
