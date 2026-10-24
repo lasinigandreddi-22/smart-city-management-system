@@ -1,5 +1,6 @@
 from rest_framework import serializers
 from django.contrib.auth.models import User
+from accounts.models import UserRole
 from .models import Complaint, ComplaintStatusHistory
 
 class ComplaintStatusHistorySerializer(serializers.ModelSerializer):
@@ -18,33 +19,63 @@ class ComplaintSerializer(serializers.ModelSerializer):
     citizen_name = serializers.SerializerMethodField()
     citizen_email = serializers.SerializerMethodField()
     citizen_phone = serializers.SerializerMethodField()
+    assigned_to_name = serializers.SerializerMethodField()
+    support_count = serializers.IntegerField(read_only=True)
+    is_supported_by_me = serializers.SerializerMethodField()
+    is_overdue = serializers.BooleanField(read_only=True)
     history = ComplaintStatusHistorySerializer(many=True, read_only=True)
 
     class Meta:
         model = Complaint
         fields = [
             'id', 'complaint_ref', 'citizen', 'citizen_name', 'citizen_email', 'citizen_phone',
-            'title', 'category', 'description', 'location', 'priority', 'status',
-            'assigned_department', 'assigned_to', 'resolution_details',
+            'title', 'category', 'description', 'location', 'ward', 'priority', 'priority_reason',
+            'status', 'assigned_department', 'assigned_to', 'assigned_to_name', 'deadline',
+            'resolution_details', 'support_count', 'is_supported_by_me', 'is_overdue',
             'history', 'created_at', 'updated_at'
         ]
-        read_only_fields = ['id', 'complaint_ref', 'citizen', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'complaint_ref', 'citizen', 'created_at', 'updated_at', 'support_count', 'is_overdue']
 
     def get_citizen_name(self, obj):
-        return obj.citizen.get_full_name() or obj.citizen.username
+        request = self.context.get('request')
+        if request and request.user and request.user.is_authenticated:
+            role = getattr(request.user.profile, 'role', UserRole.CITIZEN)
+            if role in [UserRole.ADMIN, UserRole.AREA_HEAD, UserRole.SERVICE_DEPARTMENT, UserRole.TRAFFIC_OFFICER] or request.user == obj.citizen:
+                return obj.citizen.get_full_name() or obj.citizen.username
+        return f"Resident ({obj.ward or 'Verified Citizen'})"
 
     def get_citizen_email(self, obj):
-        return obj.citizen.email
+        request = self.context.get('request')
+        if request and request.user and request.user.is_authenticated:
+            role = getattr(request.user.profile, 'role', UserRole.CITIZEN)
+            if role in [UserRole.ADMIN, UserRole.AREA_HEAD, UserRole.SERVICE_DEPARTMENT, UserRole.TRAFFIC_OFFICER] or request.user == obj.citizen:
+                return obj.citizen.email
+        return ''
 
     def get_citizen_phone(self, obj):
-        if hasattr(obj.citizen, 'profile'):
-            return obj.citizen.profile.phone
+        request = self.context.get('request')
+        if request and request.user and request.user.is_authenticated:
+            role = getattr(request.user.profile, 'role', UserRole.CITIZEN)
+            if role in [UserRole.ADMIN, UserRole.AREA_HEAD, UserRole.SERVICE_DEPARTMENT, UserRole.TRAFFIC_OFFICER] or request.user == obj.citizen:
+                if hasattr(obj.citizen, 'profile'):
+                    return obj.citizen.profile.phone
         return ''
+
+    def get_assigned_to_name(self, obj):
+        if obj.assigned_to:
+            return obj.assigned_to.get_full_name() or obj.assigned_to.username
+        return ''
+
+    def get_is_supported_by_me(self, obj):
+        request = self.context.get('request')
+        if request and request.user and request.user.is_authenticated:
+            return obj.supports.filter(pk=request.user.pk).exists()
+        return False
 
 class ComplaintCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Complaint
-        fields = ['title', 'category', 'description', 'location', 'priority']
+        fields = ['title', 'category', 'description', 'location', 'ward', 'priority']
 
     def validate_title(self, value):
         if not value.strip():

@@ -62,7 +62,7 @@ export default function DepartmentDashboard() {
       </div>
 
       {/* KPI Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
         <StatCard
           title="Assigned Work Orders"
           value={s.total_assigned || 0}
@@ -78,16 +78,23 @@ export default function DepartmentDashboard() {
           color="amber"
         />
         <StatCard
+          title="Overdue Tasks"
+          value={s.overdue || 0}
+          subtitle="Passed target SLA"
+          icon={AlertTriangle}
+          color="red"
+        />
+        <StatCard
           title="Urgent Priority"
           value={s.urgent || 0}
-          subtitle="SLA requires immediate action"
+          subtitle="Critical action needed"
           icon={AlertTriangle}
           color="rose"
         />
         <StatCard
-          title="Resolved This Month"
+          title="Resolved"
           value={s.resolved || 0}
-          subtitle="Customer satisfaction rated"
+          subtitle="Verified complete"
           icon={CheckCircle2}
           color="emerald"
         />

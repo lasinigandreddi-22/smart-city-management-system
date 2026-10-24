@@ -4,10 +4,11 @@ from django.db.models.signals import post_save
 from django.dispatch import receiver
 
 class UserRole(models.TextChoices):
-    ADMIN = 'ADMIN', 'Admin'
+    ADMIN = 'ADMIN', 'City Admin / Commissioner'
+    AREA_HEAD = 'AREA_HEAD', 'Area Head / Department Head'
+    SERVICE_DEPARTMENT = 'SERVICE_DEPARTMENT', 'Department Staff'
     CITIZEN = 'CITIZEN', 'Citizen'
-    SERVICE_DEPARTMENT = 'SERVICE_DEPARTMENT', 'Service Department'
-    TRAFFIC_OFFICER = 'TRAFFIC_OFFICER', 'Traffic Officer'
+    TRAFFIC_OFFICER = 'TRAFFIC_OFFICER', 'Traffic Officer (Legacy Staff)'
 
 class UserProfile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile')

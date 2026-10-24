@@ -13,9 +13,10 @@ export default function LoginPage() {
 
   const demoAccounts = [
     { label: 'Citizen', username: 'citizen1', password: 'Citizen@12345', desc: 'Lodge complaints, check utilities & property tax' },
-    { label: 'Admin', username: 'admin', password: 'Admin@12345', desc: 'Full city governance, review & assign complaints' },
-    { label: 'Service Dept', username: 'department1', password: 'Dept@12345', desc: 'Process assigned work orders & repair requests' },
-    { label: 'Traffic Officer', username: 'traffic1', password: 'Traffic@12345', desc: 'Monitor traffic, log incidents & alerts' },
+    { label: 'Area Head', username: 'head1', password: 'Head@12345', desc: 'Manage area issues, prioritize & assign to staff' },
+    { label: 'City Admin', username: 'admin', password: 'Admin@12345', desc: 'Full city governance, review & assign complaints' },
+    { label: 'Dept Staff (Water)', username: 'department1', password: 'Dept@12345', desc: 'Process assigned work orders & repair requests' },
+    { label: 'Dept Staff (Traffic)', username: 'traffic1', password: 'Traffic@12345', desc: 'Roads & traffic department staff' },
   ];
 
   const handleDemoSelect = (acc) => {
@@ -39,6 +40,8 @@ export default function LoginPage() {
       const userRole = data.role;
       if (userRole === 'ADMIN') {
         navigate('/admin/dashboard');
+      } else if (userRole === 'AREA_HEAD') {
+        navigate('/area-head/dashboard');
       } else if (userRole === 'SERVICE_DEPARTMENT') {
         navigate('/department/dashboard');
       } else if (userRole === 'TRAFFIC_OFFICER') {

@@ -276,14 +276,29 @@ export default function CitizenDashboard() {
                   className="p-3 rounded-xl border border-slate-100 hover:border-slate-300 hover:bg-slate-50/70 transition-all cursor-pointer flex items-center justify-between"
                 >
                   <div className="min-w-0 flex-1 mr-3">
-                    <div className="flex items-center space-x-2">
+                    <div className="flex flex-wrap items-center gap-1.5">
                       <span className="text-[10px] font-mono font-bold text-slate-400">{c.ref}</span>
+                      {c.ward && (
+                        <span className="text-[9px] font-semibold bg-indigo-50 text-indigo-700 px-1.5 py-0.2 rounded border border-indigo-200">
+                          {c.ward}
+                        </span>
+                      )}
                       <PriorityBadge priority={c.priority} />
+                      {c.support_count > 0 && (
+                        <span className="text-[9px] font-bold text-amber-800 bg-amber-50 px-1.5 py-0.2 rounded border border-amber-200">
+                          👍 {c.support_count}
+                        </span>
+                      )}
                     </div>
                     <p className="text-xs font-bold text-slate-800 mt-1 truncate">{c.title}</p>
-                    <p className="text-[10px] text-slate-400 mt-0.5">
-                      {new Date(c.date).toLocaleDateString()}
-                    </p>
+                    <div className="flex items-center gap-2 text-[10px] text-slate-400 mt-0.5">
+                      <span>{new Date(c.date).toLocaleDateString()}</span>
+                      {c.deadline && (
+                        <span className={c.is_overdue ? 'text-red-600 font-bold' : ''}>
+                          • Target: {new Date(c.deadline).toLocaleDateString()}
+                        </span>
+                      )}
+                    </div>
                   </div>
                   <StatusBadge status={c.status} />
                 </div>

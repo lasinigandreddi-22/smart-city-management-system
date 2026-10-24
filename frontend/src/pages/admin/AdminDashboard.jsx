@@ -68,11 +68,11 @@ export default function AdminDashboard() {
       </div>
 
       {/* Primary KPI Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
         <StatCard
           title="Registered Citizens"
           value={s.total_citizens || 0}
-          subtitle="Active citizen accounts"
+          subtitle={`${s.total_staff || 0} staff • ${s.total_area_heads || 0} area heads`}
           icon={Users}
           color="blue"
         />
@@ -82,6 +82,13 @@ export default function AdminDashboard() {
           subtitle={`${s.pending_complaints || 0} pending resolution`}
           icon={AlertCircle}
           color="purple"
+        />
+        <StatCard
+          title="Overdue Complaints"
+          value={s.overdue_complaints || 0}
+          subtitle="Passed target deadline"
+          icon={ShieldAlert}
+          color="red"
         />
         <StatCard
           title="Active Utility Notices"
@@ -99,14 +106,52 @@ export default function AdminDashboard() {
         />
       </div>
 
+      {/* Top Mostly-Complained Community Issues Section */}
+      {data?.mostly_complained && data.mostly_complained.length > 0 && (
+        <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs space-y-4">
+          <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="font-bold text-sm text-slate-900">High-Impact Community Issues (Mostly Complained)</h3>
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-orange-100 text-orange-800 border border-orange-200">
+                  Citizen Priority
+                </span>
+              </div>
+              <p className="text-xs text-slate-500 mt-0.5">Issues ranked by total citizen support votes</p>
+            </div>
+            <Link to="/admin/complaints" className="text-xs font-bold text-blue-600 hover:underline">
+              View All
+            </Link>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+            {data.mostly_complained.map((item, idx) => (
+              <div key={item.id} className="p-3.5 rounded-xl border border-slate-100 bg-slate-50/70 hover:bg-slate-50 transition-colors space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-mono font-bold text-blue-700">{item.ref}</span>
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-amber-300">
+                    👍 {item.support_count || 0} Affected Citizens
+                  </span>
+                </div>
+                <p className="text-xs font-bold text-slate-900 truncate">{item.title}</p>
+                <div className="flex items-center justify-between text-[11px] text-slate-500">
+                  <span>{item.ward || 'General'}</span>
+                  <span className="font-semibold text-slate-700">{item.assigned_department || 'Unassigned'}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Interactive Distribution Analytics Charts */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Category Breakdown */}
         <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs space-y-4">
           <div className="flex items-center justify-between border-b border-slate-100 pb-3">
             <h3 className="font-bold text-sm text-slate-900 flex items-center space-x-2">
               <BarChart3 className="w-4 h-4 text-blue-600" />
-              <span>Complaints by Department Category</span>
+              <span>Complaints by Category</span>
             </h3>
             <span className="text-[11px] text-slate-400">Total: {s.total_complaints}</span>
           </div>
@@ -120,9 +165,9 @@ export default function AdminDashboard() {
                     <span>{cat.category}</span>
                     <span className="font-mono text-slate-500">{cat.count} ({pct}%)</span>
                   </div>
-                  <div className="w-full bg-slate-100 rounded-full h-2.5 overflow-hidden">
+                  <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
                     <div
-                      className="bg-blue-600 h-2.5 rounded-full transition-all duration-500"
+                      className="bg-blue-600 h-2 rounded-full transition-all duration-500"
                       style={{ width: `${pct}%` }}
                     />
                   </div>
@@ -137,7 +182,7 @@ export default function AdminDashboard() {
           <div className="flex items-center justify-between border-b border-slate-100 pb-3">
             <h3 className="font-bold text-sm text-slate-900 flex items-center space-x-2">
               <TrendingUp className="w-4 h-4 text-emerald-600" />
-              <span>Complaint Resolution Lifecycle</span>
+              <span>Resolution Lifecycle</span>
             </h3>
             <span className="text-[11px] text-slate-400">Status Distribution</span>
           </div>
@@ -161,9 +206,40 @@ export default function AdminDashboard() {
                     </span>
                     <span className="font-mono text-slate-500">{st.count} ({pct}%)</span>
                   </div>
-                  <div className="w-full bg-slate-100 rounded-full h-2.5 overflow-hidden">
+                  <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
                     <div
-                      className={`${barColor} h-2.5 rounded-full transition-all duration-500`}
+                      className={`${barColor} h-2 rounded-full transition-all duration-500`}
+                      style={{ width: `${pct}%` }}
+                    />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Ward Breakdown */}
+        <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs space-y-4">
+          <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+            <h3 className="font-bold text-sm text-slate-900 flex items-center space-x-2">
+              <BarChart3 className="w-4 h-4 text-indigo-600" />
+              <span>Complaints by Ward / Zone</span>
+            </h3>
+            <span className="text-[11px] text-slate-400">Geographical Spread</span>
+          </div>
+
+          <div className="space-y-3">
+            {charts.ward_breakdown?.map((w) => {
+              const pct = s.total_complaints > 0 ? Math.round((w.count / s.total_complaints) * 100) : 0;
+              return (
+                <div key={w.ward || 'General'} className="space-y-1">
+                  <div className="flex justify-between text-xs font-semibold text-slate-700">
+                    <span>{w.ward || 'General'}</span>
+                    <span className="font-mono text-slate-500">{w.count} ({pct}%)</span>
+                  </div>
+                  <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
+                    <div
+                      className="bg-indigo-600 h-2 rounded-full transition-all duration-500"
                       style={{ width: `${pct}%` }}
                     />
                   </div>

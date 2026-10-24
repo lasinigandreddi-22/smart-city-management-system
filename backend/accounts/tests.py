@@ -181,3 +181,89 @@ class SmartCityAPITests(TestCase):
         })
         self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
 
+    def test_area_head_dashboard_and_support_flow(self):
+        # Create Area Head
+        area_head = User.objects.create_user(username='test_head', password='password123', email='head@test.com')
+        area_head.profile.role = UserRole.AREA_HEAD
+        area_head.profile.assigned_zone = 'North Zone'
+        area_head.profile.save()
+
+        # Create Complaint
+        complaint = Complaint.objects.create(
+            complaint_ref='TEST-CMP-001',
+            citizen=self.citizen1,
+            title='Main Pipe Rupture in North Ward',
+            category='Water Supply',
+            ward='North Zone',
+            location='Sector 4',
+            priority='High',
+            status=ComplaintStatus.SUBMITTED,
+            assigned_department='Water & Electricity Services'
+        )
+
+        # Citizen 2 supports the complaint
+        self.client.force_authenticate(user=self.citizen2)
+        supp_res = self.client.post(f'/api/complaints/{complaint.id}/support/')
+        self.assertEqual(supp_res.status_code, status.HTTP_200_OK)
+        self.assertTrue(supp_res.data['supported'])
+        self.assertEqual(supp_res.data['support_count'], 1)
+
+        # Area Head views dashboard
+        self.client.force_authenticate(user=area_head)
+        dash_res = self.client.get('/api/dashboard/area-head/')
+        self.assertEqual(dash_res.status_code, status.HTTP_200_OK)
+        self.assertIn('mostly_complained', dash_res.data)
+        self.assertIn('summary', dash_res.data)
+        self.assertEqual(dash_res.data['summary']['total_complaints'], 1)
+
+        # Area Head assigns staff with priority reason
+        assign_res = self.client.patch(f'/api/complaints/{complaint.id}/', {
+            'assigned_to': self.dept_user.id,
+            'priority': 'Urgent',
+            'priority_reason': 'Heavily supported issue affecting multiple streets',
+            'deadline': '2026-11-01T12:00:00Z'
+        })
+        self.assertEqual(assign_res.status_code, status.HTTP_200_OK)
+        complaint.refresh_from_db()
+        self.assertEqual(complaint.assigned_to, self.dept_user)
+        self.assertEqual(complaint.status, ComplaintStatus.ASSIGNED)
+        self.assertEqual(complaint.priority, 'Urgent')
+        self.assertEqual(complaint.priority_reason, 'Heavily supported issue affecting multiple streets')
+
+    def test_assignment_validation_cannot_assign_to_citizen(self):
+        area_head = User.objects.create_user(username='test_head2', password='password123', email='head2@test.com')
+        area_head.profile.role = UserRole.AREA_HEAD
+        area_head.profile.save()
+
+        complaint = Complaint.objects.create(
+            complaint_ref='TEST-CMP-002',
+            citizen=self.citizen1,
+            title='Streetlight dark',
+            category='Electricity',
+            ward='North Zone',
+            location='Park Ave',
+            status=ComplaintStatus.SUBMITTED
+        )
+
+        self.client.force_authenticate(user=area_head)
+        # Attempt assigning to a Citizen
+        invalid_assign = self.client.patch(f'/api/complaints/{complaint.id}/', {
+            'assigned_to': self.citizen2.id
+        })
+        self.assertEqual(invalid_assign.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('only be assigned to Department Staff', invalid_assign.data['error'])
+
+    def test_admin_user_role_management(self):
+        self.client.force_authenticate(user=self.admin_user)
+        # Update citizen2 to AREA_HEAD with zone
+        res = self.client.patch(f'/api/auth/users/{self.citizen2.id}/', {
+            'role': 'AREA_HEAD',
+            'assigned_zone': 'South Zone',
+            'department_name': 'Municipal Governance'
+        })
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.citizen2.refresh_from_db()
+        self.assertEqual(self.citizen2.profile.role, UserRole.AREA_HEAD)
+        self.assertEqual(self.citizen2.profile.assigned_zone, 'South Zone')
+
+

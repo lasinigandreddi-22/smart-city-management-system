@@ -17,20 +17,32 @@ class IsCitizenUserRole(permissions.BasePermission):
             return False
         return getattr(request.user.profile, 'role', None) == UserRole.CITIZEN
 
+class IsAreaHeadUserRole(permissions.BasePermission):
+    def has_permission(self, request, view):
+        if not request.user or not request.user.is_authenticated:
+            return False
+        return (
+            getattr(request.user.profile, 'role', None) in [UserRole.AREA_HEAD, UserRole.ADMIN] or
+            request.user.is_staff or request.user.is_superuser
+        )
+
 class IsDepartmentUserRole(permissions.BasePermission):
     def has_permission(self, request, view):
         if not request.user or not request.user.is_authenticated:
             return False
         return (
-            getattr(request.user.profile, 'role', None) in [UserRole.SERVICE_DEPARTMENT, UserRole.ADMIN] or
-            request.user.is_staff
+            getattr(request.user.profile, 'role', None) in [UserRole.SERVICE_DEPARTMENT, UserRole.TRAFFIC_OFFICER, UserRole.AREA_HEAD, UserRole.ADMIN] or
+            request.user.is_staff or request.user.is_superuser
         )
 
 class IsTrafficOfficerUserRole(permissions.BasePermission):
     def has_permission(self, request, view):
         if not request.user or not request.user.is_authenticated:
             return False
+        role = getattr(request.user.profile, 'role', None)
+        dept = getattr(request.user.profile, 'department_name', '').lower()
         return (
-            getattr(request.user.profile, 'role', None) in [UserRole.TRAFFIC_OFFICER, UserRole.ADMIN] or
-            request.user.is_staff
+            role in [UserRole.TRAFFIC_OFFICER, UserRole.ADMIN, UserRole.AREA_HEAD] or
+            (role == UserRole.SERVICE_DEPARTMENT and 'traffic' in dept) or
+            request.user.is_staff or request.user.is_superuser
         )

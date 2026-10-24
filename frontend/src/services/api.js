@@ -48,6 +48,15 @@ export const api = {
     getProfile: () => request('/auth/profile/'),
     updateProfile: (data) => request('/auth/profile/', { method: 'PATCH', body: JSON.stringify(data) }),
     getCitizens: () => request('/auth/citizens/'),
+    getStaff: (params = {}) => {
+      const query = new URLSearchParams(params).toString();
+      return request(`/auth/staff/${query ? `?${query}` : ''}`);
+    },
+    getUsers: (params = {}) => {
+      const query = new URLSearchParams(params).toString();
+      return request(`/auth/users/${query ? `?${query}` : ''}`);
+    },
+    updateUser: (id, data) => request(`/auth/users/${id}/`, { method: 'PATCH', body: JSON.stringify(data) }),
   },
 
   // Notifications
@@ -65,6 +74,7 @@ export const api = {
     get: (id) => request(`/complaints/${id}/`),
     create: (data) => request('/complaints/', { method: 'POST', body: JSON.stringify(data) }),
     update: (id, data) => request(`/complaints/${id}/`, { method: 'PATCH', body: JSON.stringify(data) }),
+    support: (id) => request(`/complaints/${id}/support/`, { method: 'POST' }),
     delete: (id) => request(`/complaints/${id}/`, { method: 'DELETE' }),
   },
 
@@ -126,7 +136,14 @@ export const api = {
   dashboard: {
     getCitizenStats: () => request('/dashboard/citizen/'),
     getAdminStats: () => request('/dashboard/admin/'),
-    getDepartmentStats: () => request('/dashboard/department/'),
+    getDepartmentStats: (params = {}) => {
+      const query = new URLSearchParams(params).toString();
+      return request(`/dashboard/department/${query ? `?${query}` : ''}`);
+    },
+    getAreaHeadStats: (params = {}) => {
+      const query = new URLSearchParams(params).toString();
+      return request(`/dashboard/area-head/${query ? `?${query}` : ''}`);
+    },
     getTrafficStats: () => request('/dashboard/traffic/'),
   },
 };

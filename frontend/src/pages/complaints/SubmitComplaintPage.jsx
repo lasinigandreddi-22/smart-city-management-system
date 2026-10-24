@@ -1,11 +1,14 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { PlusCircle, ArrowLeft, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { useAuth } from '../../context/AuthContext';
 import api from '../../services/api';
 
 export default function SubmitComplaintPage() {
+  const { user } = useAuth();
   const [title, setTitle] = useState('');
   const [category, setCategory] = useState('Water Supply');
+  const [ward, setWard] = useState(user?.profile?.assigned_zone || 'North Zone');
   const [location, setLocation] = useState('');
   const [priority, setPriority] = useState('Medium');
   const [description, setDescription] = useState('');
@@ -33,6 +36,7 @@ export default function SubmitComplaintPage() {
       const result = await api.complaints.create({
         title,
         category,
+        ward,
         location,
         priority,
         description,
@@ -98,7 +102,7 @@ export default function SubmitComplaintPage() {
             />
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
               <label className="block font-semibold text-slate-700 uppercase tracking-wider mb-1">
                 Category *
@@ -120,6 +124,22 @@ export default function SubmitComplaintPage() {
 
             <div>
               <label className="block font-semibold text-slate-700 uppercase tracking-wider mb-1">
+                Ward / Sector *
+              </label>
+              <select
+                value={ward}
+                onChange={(e) => setWard(e.target.value)}
+                className="w-full p-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 bg-white text-slate-900"
+              >
+                <option value="North Zone">North Zone (Ward 14)</option>
+                <option value="South Zone">South Zone (Ward 08)</option>
+                <option value="Central Zone">Central Zone</option>
+                <option value="East Zone">East Zone</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block font-semibold text-slate-700 uppercase tracking-wider mb-1">
                 Urgency / Priority
               </label>
               <select
@@ -128,9 +148,9 @@ export default function SubmitComplaintPage() {
                 className="w-full p-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 bg-white text-slate-900"
               >
                 <option value="Low">Low - Minor nuisance</option>
-                <option value="Medium">Medium - Regular attention needed</option>
+                <option value="Medium">Medium - Regular attention</option>
                 <option value="High">High - Significant disruption</option>
-                <option value="Urgent">Urgent - Safety hazard / Emergency</option>
+                <option value="Urgent">Urgent - Safety emergency</option>
               </select>
             </div>
           </div>

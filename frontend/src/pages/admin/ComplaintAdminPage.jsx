@@ -19,8 +19,13 @@ export default function ComplaintAdminPage() {
   // Edit / Assignment modal state
   const [selectedComplaint, setSelectedComplaint] = useState(null);
   const [assignedDept, setAssignedDept] = useState('');
+  const [assignedToId, setAssignedToId] = useState('');
   const [statusVal, setStatusVal] = useState('');
+  const [priorityVal, setPriorityVal] = useState('Medium');
+  const [priorityReasonVal, setPriorityReasonVal] = useState('');
+  const [deadlineVal, setDeadlineVal] = useState('');
   const [notes, setNotes] = useState('');
+  const [staffList, setStaffList] = useState([]);
   const [saving, setSaving] = useState(false);
 
   // Delete confirmation modal state
@@ -35,8 +40,12 @@ export default function ComplaintAdminPage() {
       if (statusFilter) params.status = statusFilter;
       if (categoryFilter) params.category = categoryFilter;
 
-      const data = await api.complaints.list(params);
+      const [data, staff] = await Promise.all([
+        api.complaints.list(params),
+        api.auth.getStaff()
+      ]);
       setComplaints(data || []);
+      setStaffList(staff || []);
     } catch (err) {
       console.error('Failed to load complaints:', err);
     } finally {
@@ -51,7 +60,11 @@ export default function ComplaintAdminPage() {
   const openAssignModal = (complaint) => {
     setSelectedComplaint(complaint);
     setAssignedDept(complaint.assigned_department || 'Water & Electricity Services');
+    setAssignedToId(complaint.assigned_to_id || complaint.assigned_to?.id || '');
     setStatusVal(complaint.status);
+    setPriorityVal(complaint.priority || 'Medium');
+    setPriorityReasonVal(complaint.priority_reason || '');
+    setDeadlineVal(complaint.deadline ? complaint.deadline.substring(0, 16) : '');
     setNotes('');
   };
 
@@ -61,8 +74,12 @@ export default function ComplaintAdminPage() {
     try {
       await api.complaints.update(selectedComplaint.id, {
         assigned_department: assignedDept,
+        assigned_to: assignedToId || null,
         status: statusVal,
-        notes: notes || `Reassigned to ${assignedDept} by Administrator.`,
+        priority: priorityVal,
+        priority_reason: priorityReasonVal,
+        deadline: deadlineVal || null,
+        notes: notes || `Directives updated by Admin/Management.`,
       });
       setSelectedComplaint(null);
       loadComplaints();
@@ -256,11 +273,69 @@ export default function ComplaintAdminPage() {
                 className="w-full p-2.5 border border-slate-300 rounded-xl bg-white"
               >
                 <option value="Water & Electricity Services">Water & Electricity Services</option>
+                <option value="Roads & Traffic Department">Roads & Traffic Department</option>
                 <option value="Public Works & Roads Department">Public Works & Roads Department</option>
                 <option value="Sanitation Department">Sanitation Department</option>
                 <option value="Traffic Control Division">Traffic Control Division</option>
                 <option value="Public Health & Drainage">Public Health & Drainage</option>
               </select>
+            </div>
+
+            <div>
+              <label className="block font-semibold text-slate-700 mb-1">
+                Assign Field Staff
+              </label>
+              <select
+                value={assignedToId}
+                onChange={(e) => setAssignedToId(e.target.value)}
+                className="w-full p-2.5 border border-slate-300 rounded-xl bg-white"
+              >
+                <option value="">-- Leave Unassigned --</option>
+                {staffList.map((st) => (
+                  <option key={st.id} value={st.id}>
+                    {st.name} ({st.department_name || 'Staff'}) - {st.assigned_zone || 'City-wide'}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">Priority</label>
+                <select
+                  value={priorityVal}
+                  onChange={(e) => setPriorityVal(e.target.value)}
+                  className="w-full p-2.5 border border-slate-300 rounded-xl bg-white"
+                >
+                  <option value="Low">Low</option>
+                  <option value="Medium">Medium</option>
+                  <option value="High">High</option>
+                  <option value="Urgent">Urgent</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">Deadline</label>
+                <input
+                  type="datetime-local"
+                  value={deadlineVal}
+                  onChange={(e) => setDeadlineVal(e.target.value)}
+                  className="w-full p-2.5 border border-slate-300 rounded-xl bg-white"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block font-semibold text-slate-700 mb-1">
+                Priority Override Justification
+              </label>
+              <input
+                type="text"
+                value={priorityReasonVal}
+                onChange={(e) => setPriorityReasonVal(e.target.value)}
+                placeholder="Reason for priority assignment or escalation..."
+                className="w-full p-2.5 border border-slate-300 rounded-xl bg-white"
+              />
             </div>
 
             <div>

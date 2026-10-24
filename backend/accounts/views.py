@@ -161,6 +161,114 @@ class CitizenListAPIView(views.APIView):
         citizens = User.objects.filter(profile__role=UserRole.CITIZEN).select_related('profile').order_by('-date_joined')
         return Response(UserSerializer(citizens, many=True).data)
 
+class StaffListAPIView(views.APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        role = getattr(request.user.profile, 'role', None)
+        if role not in [UserRole.ADMIN, UserRole.AREA_HEAD, UserRole.SERVICE_DEPARTMENT, UserRole.TRAFFIC_OFFICER] and not request.user.is_staff:
+            return Response({'error': 'Permission denied.'}, status=status.HTTP_403_FORBIDDEN)
+
+        department = request.query_params.get('department')
+        ward = request.query_params.get('ward') or request.query_params.get('zone')
+
+        staff_users = User.objects.filter(
+            profile__role__in=[UserRole.SERVICE_DEPARTMENT, UserRole.TRAFFIC_OFFICER]
+        ).select_related('profile').order_by('first_name', 'username')
+
+        if department:
+            staff_users = staff_users.filter(profile__department_name__icontains=department)
+        if ward:
+            from django.db.models import Q
+            staff_users = staff_users.filter(
+                Q(profile__assigned_zone__icontains=ward) | 
+                Q(profile__assigned_zone__isnull=True) | 
+                Q(profile__assigned_zone='') |
+                Q(profile__assigned_zone__icontains='City-wide')
+            )
+
+        data = []
+        for u in staff_users:
+            data.append({
+                'id': u.id,
+                'username': u.username,
+                'name': u.get_full_name() or u.username,
+                'email': u.email,
+                'role': u.profile.role,
+                'department_name': u.profile.department_name,
+                'assigned_zone': u.profile.assigned_zone
+            })
+        return Response(data)
+
+class UserManagementAPIView(views.APIView):
+    permission_classes = [IsAdminUserRole]
+
+    def get(self, request):
+        from django.db.models import Q
+        role_filter = request.query_params.get('role')
+        search = request.query_params.get('search')
+
+        queryset = User.objects.select_related('profile').order_by('-date_joined')
+        if role_filter:
+            queryset = queryset.filter(profile__role=role_filter)
+        if search:
+            queryset = queryset.filter(
+                Q(username__icontains=search) |
+                Q(first_name__icontains=search) |
+                Q(last_name__icontains=search) |
+                Q(email__icontains=search) |
+                Q(profile__department_name__icontains=search) |
+                Q(profile__assigned_zone__icontains=search)
+            )
+
+        return Response(UserSerializer(queryset, many=True).data)
+
+    def patch(self, request, pk=None):
+        if not pk:
+            return Response({'error': 'User ID required.'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        try:
+            target_user = User.objects.select_related('profile').get(pk=pk)
+        except User.DoesNotExist:
+            return Response({'error': 'User not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+        profile, _ = UserProfile.objects.get_or_create(user=target_user)
+        data = request.data
+
+        # Update role
+        if 'role' in data:
+            new_role = data['role']
+            valid_roles = [r.value for r in UserRole]
+            if new_role not in valid_roles:
+                return Response({'error': f'Invalid role: {new_role}. Valid roles are: {valid_roles}'}, status=status.HTTP_400_BAD_REQUEST)
+            profile.role = new_role
+
+        # Update department
+        if 'department_name' in data:
+            profile.department_name = data.get('department_name', '').strip()
+
+        # Update assigned_zone / ward
+        if 'assigned_zone' in data:
+            profile.assigned_zone = data.get('assigned_zone', '').strip()
+        elif 'ward' in data:
+            profile.assigned_zone = data.get('ward', '').strip()
+
+        # Update name/email if provided
+        if 'first_name' in data:
+            target_user.first_name = data['first_name'].strip()
+        if 'last_name' in data:
+            target_user.last_name = data['last_name'].strip()
+        if 'email' in data:
+            target_user.email = data['email'].strip()
+
+        target_user.save()
+        profile.save()
+
+        return Response({
+            'message': f'User {target_user.username} updated successfully.',
+            'user': UserSerializer(target_user).data
+        })
+
 class NotificationListAPIView(views.APIView):
     permission_classes = [permissions.IsAuthenticated]
 

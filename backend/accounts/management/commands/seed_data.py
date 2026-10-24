@@ -71,7 +71,7 @@ class Command(BaseCommand):
                 'phone': '+91 98765 33333',
                 'address': 'Public Works Depot, East Sector',
                 'department_name': 'Water & Electricity Services',
-                'assigned_zone': 'Metro Services'
+                'assigned_zone': 'North Zone'
             },
             {
                 'username': 'traffic1',
@@ -79,13 +79,27 @@ class Command(BaseCommand):
                 'email': 'traffic.officer1@smartcity.gov.in',
                 'first_name': 'Inspector',
                 'last_name': 'Rajesh Kumar',
-                'role': UserRole.TRAFFIC_OFFICER,
+                'role': UserRole.SERVICE_DEPARTMENT,
                 'is_staff': False,
                 'is_superuser': False,
                 'phone': '+91 98765 44444',
                 'address': 'Traffic Enforcement Command Center',
-                'department_name': 'Traffic Control Division',
-                'assigned_zone': 'Central Metro Corridor'
+                'department_name': 'Roads & Traffic Department',
+                'assigned_zone': 'North Zone'
+            },
+            {
+                'username': 'head1',
+                'password': 'Head@12345',
+                'email': 'head.north@smartcity.gov.in',
+                'first_name': 'Devendra',
+                'last_name': 'Mehta',
+                'role': UserRole.AREA_HEAD,
+                'is_staff': False,
+                'is_superuser': False,
+                'phone': '+91 98765 77777',
+                'address': 'Ward 14 Zonal Office, North Sector',
+                'department_name': 'Municipal Governance',
+                'assigned_zone': 'North Zone'
             }
         ]
 
@@ -117,6 +131,7 @@ class Command(BaseCommand):
         citizen2 = created_users['citizen2']
         dept_user = created_users['department1']
         traffic_user = created_users['traffic1']
+        head_user = created_users['head1']
 
         # 2. Seed Water Notices
         water_notices_data = [
@@ -251,16 +266,20 @@ class Command(BaseCommand):
                 'title': 'Deep Pothole at Lake View Road - 4th Cross',
                 'category': ComplaintCategory.ROADS_TRAFFIC,
                 'location': 'Lake View Road near Landmark Bakery',
+                'ward': 'North Zone',
                 'priority': ComplaintPriority.HIGH,
+                'priority_reason': 'School bus route with multiple two-wheeler skidding incidents reported.',
                 'status': ComplaintStatus.IN_PROGRESS,
-                'assigned_department': 'Water & Electricity Services',
-                'assigned_to': dept_user,
+                'assigned_department': 'Roads & Traffic Department',
+                'assigned_to': traffic_user,
+                'deadline': timezone.now() + timedelta(days=2),
                 'description': 'Multiple deep potholes formed after heavy rainfall. Two two-wheelers skidded yesterday. Immediate asphalt repair requested.',
                 'resolution_details': '',
+                'supporters': [citizen1, citizen2],
                 'history': [
                     ('New', ComplaintStatus.SUBMITTED, 'Complaint registered online by citizen.', citizen1),
-                    (ComplaintStatus.SUBMITTED, ComplaintStatus.ASSIGNED, 'Assigned to Public Works & Maintenance team.', admin_user),
-                    (ComplaintStatus.ASSIGNED, ComplaintStatus.IN_PROGRESS, 'Cold-mix asphalt patch material dispatched with repair crew.', dept_user)
+                    (ComplaintStatus.SUBMITTED, ComplaintStatus.ASSIGNED, 'Assigned to Roads & Traffic repair crew.', admin_user),
+                    (ComplaintStatus.ASSIGNED, ComplaintStatus.IN_PROGRESS, 'Cold-mix asphalt patch material dispatched with repair crew.', traffic_user)
                 ]
             },
             {
@@ -269,12 +288,16 @@ class Command(BaseCommand):
                 'title': 'Muddy & Discolored Tap Water Supply',
                 'category': ComplaintCategory.WATER_SUPPLY,
                 'location': 'Flat 402, Skyline Residency',
+                'ward': 'North Zone',
                 'priority': ComplaintPriority.URGENT,
+                'priority_reason': 'Contaminated drinking water affecting 40+ families; urgent health risk.',
                 'status': ComplaintStatus.ASSIGNED,
                 'assigned_department': 'Water & Electricity Services',
                 'assigned_to': dept_user,
+                'deadline': timezone.now() - timedelta(days=1),  # Overdue
                 'description': 'Tap water running turbid brown with high sedimentation since morning supply cycle. Inhabitable for drinking.',
                 'resolution_details': '',
+                'supporters': [citizen1, citizen2],
                 'history': [
                     ('New', ComplaintStatus.SUBMITTED, 'Complaint submitted by citizen.', citizen1),
                     (ComplaintStatus.SUBMITTED, ComplaintStatus.ASSIGNED, 'Forwarded urgently to Water Quality Testing Division.', admin_user)
@@ -286,12 +309,16 @@ class Command(BaseCommand):
                 'title': 'Garbage Dump Overflow at Sector 4 Park Corner',
                 'category': ComplaintCategory.SANITATION,
                 'location': 'Corner of Sector 4 Public Park',
+                'ward': 'North Zone',
                 'priority': ComplaintPriority.MEDIUM,
+                'priority_reason': 'General sanitation overflow.',
                 'status': ComplaintStatus.RESOLVED,
-                'assigned_department': 'Sanitation Department',
+                'assigned_department': 'Water & Electricity Services',
                 'assigned_to': None,
+                'deadline': timezone.now() - timedelta(days=2),
                 'description': 'Community waste bin has not been cleared for 3 consecutive days. Stray animals scattering garbage.',
                 'resolution_details': 'Special waste disposal truck deployed. Waste cleared and area sanitized with disinfectant powder.',
+                'supporters': [citizen1],
                 'history': [
                     ('New', ComplaintStatus.SUBMITTED, 'Logged by citizen.', citizen1),
                     (ComplaintStatus.SUBMITTED, ComplaintStatus.IN_PROGRESS, 'Sanitation truck routed.', admin_user),
@@ -304,14 +331,101 @@ class Command(BaseCommand):
                 'title': 'Storm Water Drain Blocked with Construction Debris',
                 'category': ComplaintCategory.DRAINAGE,
                 'location': 'Greenfield Colony Main Gate',
+                'ward': 'South Zone',
                 'priority': ComplaintPriority.MEDIUM,
+                'priority_reason': 'Drainage backup risk if unseasonal rains occur.',
                 'status': ComplaintStatus.SUBMITTED,
                 'assigned_department': '',
                 'assigned_to': None,
+                'deadline': timezone.now() + timedelta(days=4),
                 'description': 'Nearby building construction discarded concrete debris into roadside stormwater drain causing water ponding.',
                 'resolution_details': '',
+                'supporters': [citizen2],
                 'history': [
                     ('New', ComplaintStatus.SUBMITTED, 'Submitted via citizen portal.', citizen2)
+                ]
+            },
+            {
+                'ref': 'CMP-2026-E505',
+                'citizen': citizen1,
+                'title': 'Malfunctioning Streetlight Cluster on 80ft Ring Road',
+                'category': ComplaintCategory.ELECTRICITY,
+                'location': '80ft Ring Road, Near Junction 4',
+                'ward': 'North Zone',
+                'priority': ComplaintPriority.HIGH,
+                'priority_reason': 'Dark stretch of high-speed corridor creating critical pedestrian accident risk.',
+                'status': ComplaintStatus.SUBMITTED,
+                'assigned_department': '',
+                'assigned_to': None,
+                'deadline': timezone.now() + timedelta(days=1),
+                'description': 'Six consecutive LED poles are completely dark creating a severe blind spot at the pedestrian crossing.',
+                'resolution_details': '',
+                'supporters': [citizen1, citizen2],
+                'history': [
+                    ('New', ComplaintStatus.SUBMITTED, 'Reported by local neighborhood association.', citizen1)
+                ]
+            },
+            {
+                'ref': 'CMP-2026-F606',
+                'citizen': citizen1,
+                'title': 'Major Water Main Burst Flooding Pedestrian Sidewalk',
+                'category': ComplaintCategory.WATER_SUPPLY,
+                'location': 'Sector 5 Main Avenue, North Ward',
+                'ward': 'North Zone',
+                'priority': ComplaintPriority.URGENT,
+                'priority_reason': 'Pressurized potable water main ruptured; washing out road foundation.',
+                'status': ComplaintStatus.IN_PROGRESS,
+                'assigned_department': 'Water & Electricity Services',
+                'assigned_to': dept_user,
+                'deadline': timezone.now() + timedelta(hours=10),
+                'description': 'Potable water pipe burst flooding road and causing soil subsidence under the pedestrian footpath.',
+                'resolution_details': '',
+                'supporters': [citizen1, citizen2],
+                'history': [
+                    ('New', ComplaintStatus.SUBMITTED, 'Submitted via citizen app.', citizen1),
+                    (ComplaintStatus.SUBMITTED, ComplaintStatus.ASSIGNED, 'Escalated by Area Head to Water Dept.', head_user),
+                    (ComplaintStatus.ASSIGNED, ComplaintStatus.IN_PROGRESS, 'Excavator and isolation team deployed.', dept_user)
+                ]
+            },
+            {
+                'ref': 'CMP-2026-G707',
+                'citizen': citizen2,
+                'title': 'Abandoned Heavy Dump Truck Obstructing Hospital Emergency Gate',
+                'category': ComplaintCategory.ROADS_TRAFFIC,
+                'location': 'Civil Hospital Emergency Gate Road',
+                'ward': 'North Zone',
+                'priority': ComplaintPriority.URGENT,
+                'priority_reason': 'Direct obstruction to life-saving ambulance entry corridor.',
+                'status': ComplaintStatus.SUBMITTED,
+                'assigned_department': 'Roads & Traffic Department',
+                'assigned_to': None,
+                'deadline': timezone.now() + timedelta(hours=6),
+                'description': 'Commercial flatbed truck with broken axle left directly across the ambulance entrance.',
+                'resolution_details': '',
+                'supporters': [citizen1, citizen2],
+                'history': [
+                    ('New', ComplaintStatus.SUBMITTED, 'Emergency notification logged by hospital security.', citizen2)
+                ]
+            },
+            {
+                'ref': 'CMP-2026-H808',
+                'citizen': citizen1,
+                'title': 'Open Sewage Manhole Cover near Primary School',
+                'category': ComplaintCategory.SANITATION,
+                'location': 'Little Angels Nursery Lane, Sector 3',
+                'ward': 'North Zone',
+                'priority': ComplaintPriority.URGENT,
+                'priority_reason': 'Immediate fall hazard for young children walking to school.',
+                'status': ComplaintStatus.ASSIGNED,
+                'assigned_department': 'Water & Electricity Services',
+                'assigned_to': dept_user,
+                'deadline': timezone.now() - timedelta(days=2),  # Overdue
+                'description': 'Heavy iron manhole cover cracked and removed by scrap scavengers, exposing 10ft deep septic shaft.',
+                'resolution_details': '',
+                'supporters': [citizen1, citizen2],
+                'history': [
+                    ('New', ComplaintStatus.SUBMITTED, 'Reported by parents committee.', citizen1),
+                    (ComplaintStatus.SUBMITTED, ComplaintStatus.ASSIGNED, 'Emergency barricade requested.', head_user)
                 ]
             }
         ]
@@ -323,15 +437,23 @@ class Command(BaseCommand):
                     'citizen': cdata['citizen'],
                     'title': cdata['title'],
                     'category': cdata['category'],
+                    'ward': cdata.get('ward', 'North Zone'),
                     'location': cdata['location'],
                     'priority': cdata['priority'],
+                    'priority_reason': cdata.get('priority_reason', ''),
                     'status': cdata['status'],
                     'assigned_department': cdata['assigned_department'],
                     'assigned_to': cdata['assigned_to'],
+                    'deadline': cdata.get('deadline'),
                     'description': cdata['description'],
                     'resolution_details': cdata['resolution_details']
                 }
             )
+
+            # Add supporters
+            if 'supporters' in cdata:
+                for supp in cdata['supporters']:
+                    complaint.supports.add(supp)
 
             if c_created or not complaint.history.exists():
                 for prev_st, new_st, note, actor in cdata['history']:

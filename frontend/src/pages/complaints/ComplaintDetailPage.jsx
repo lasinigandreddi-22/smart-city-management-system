@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { 
   ArrowLeft, Clock, MapPin, User, Building, AlertCircle, 
-  CheckCircle2, FileText, Send, ShieldAlert, Sparkles 
+  CheckCircle2, FileText, Send, ShieldAlert, Sparkles,
+  ThumbsUp, UserCheck, AlertTriangle
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../services/api';
@@ -12,27 +13,43 @@ export default function ComplaintDetailPage() {
   const { id } = useParams();
   const { user, role } = useAuth();
   const [complaint, setComplaint] = useState(null);
+  const [staffList, setStaffList] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [supporting, setSupporting] = useState(false);
   const navigate = useNavigate();
 
-  // Action form state for authorized department/admin users
+  // Action form state
   const [newStatus, setNewStatus] = useState('');
+  const [assignedToId, setAssignedToId] = useState('');
+  const [assignedDept, setAssignedDept] = useState('');
+  const [priority, setPriority] = useState('');
+  const [priorityReason, setPriorityReason] = useState('');
+  const [deadline, setDeadline] = useState('');
   const [workNotes, setWorkNotes] = useState('');
   const [resolutionDetails, setResolutionDetails] = useState('');
-  const [assignedDepartment, setAssignedDepartment] = useState('');
   const [updating, setUpdating] = useState(false);
   const [updateMsg, setUpdateMsg] = useState('');
 
-  const canUpdate = role === 'ADMIN' || role === 'SERVICE_DEPARTMENT';
+  const canManage = role === 'ADMIN' || role === 'AREA_HEAD';
+  const canUpdateStatus = canManage || role === 'SERVICE_DEPARTMENT' || role === 'TRAFFIC_OFFICER';
 
   const loadComplaint = async () => {
     try {
-      const data = await api.complaints.get(id);
+      const [data, staffRes] = await Promise.all([
+        api.complaints.get(id),
+        canManage ? api.auth.getStaff() : Promise.resolve([])
+      ]);
+
       setComplaint(data);
       setNewStatus(data.status);
-      setAssignedDepartment(data.assigned_department || '');
+      setAssignedToId(data.assigned_to_id || data.assigned_to?.id || '');
+      setAssignedDept(data.assigned_department || '');
+      setPriority(data.priority || 'Medium');
+      setPriorityReason(data.priority_reason || '');
+      setDeadline(data.deadline ? data.deadline.substring(0, 16) : '');
       setResolutionDetails(data.resolution_details || '');
+      setStaffList(staffRes || []);
     } catch (err) {
       setError(err.message || 'Unable to load complaint details.');
     } finally {
@@ -43,6 +60,22 @@ export default function ComplaintDetailPage() {
   useEffect(() => {
     loadComplaint();
   }, [id]);
+
+  const handleSupport = async () => {
+    setSupporting(true);
+    try {
+      const res = await api.complaints.support(id);
+      setComplaint((prev) => ({
+        ...prev,
+        support_count: res.support_count,
+        is_supported_by_me: res.supported
+      }));
+    } catch (err) {
+      alert(err.message || 'Failed to toggle support.');
+    } finally {
+      setSupporting(false);
+    }
+  };
 
   const handleUpdate = async (e) => {
     e.preventDefault();
@@ -59,15 +92,22 @@ export default function ComplaintDetailPage() {
         payload.resolution_details = resolutionDetails;
       }
 
-      if (role === 'ADMIN' && assignedDepartment) {
-        payload.assigned_department = assignedDepartment;
+      if (canManage) {
+        payload.assigned_to = assignedToId || null;
+        payload.priority = priority;
+        payload.priority_reason = priorityReason;
+        payload.deadline = deadline || null;
+        if (assignedDept) {
+          payload.assigned_department = assignedDept;
+        }
       }
 
       const updated = await api.complaints.update(id, payload);
       setComplaint(updated);
       setWorkNotes('');
-      setUpdateMsg('Status and notes updated successfully!');
+      setUpdateMsg('Complaint updated successfully!');
       setTimeout(() => setUpdateMsg(''), 3000);
+      loadComplaint();
     } catch (err) {
       alert('Failed to update: ' + err.message);
     } finally {
@@ -99,27 +139,52 @@ export default function ComplaintDetailPage() {
     );
   }
 
+  const isOverdue = complaint.is_overdue;
+
   return (
     <div className="space-y-6 max-w-5xl mx-auto">
       {/* Top Breadcrumb */}
-      <Link
-        to="/complaints"
-        className="inline-flex items-center text-xs font-semibold text-slate-500 hover:text-slate-900 transition-colors"
-      >
-        <ArrowLeft className="w-4 h-4 mr-1.5" />
-        Back to Complaints List
-      </Link>
+      <div className="flex items-center justify-between">
+        <Link
+          to="/complaints"
+          className="inline-flex items-center text-xs font-semibold text-slate-500 hover:text-slate-900 transition-colors"
+        >
+          <ArrowLeft className="w-4 h-4 mr-1.5" />
+          Back to Complaints List
+        </Link>
+
+        {role === 'AREA_HEAD' && (
+          <Link
+            to="/area-head/dashboard"
+            className="text-xs font-semibold text-blue-600 hover:underline"
+          >
+            ← Area Head Operations
+          </Link>
+        )}
+      </div>
 
       {/* Header card */}
       <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-          <div className="flex items-center space-x-2">
+          <div className="flex flex-wrap items-center gap-2">
             <span className="font-mono font-bold text-sm text-blue-600 bg-blue-50 px-2.5 py-1 rounded-lg border border-blue-200">
               {complaint.complaint_ref}
             </span>
+            <span className="font-bold text-xs bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded border border-indigo-200">
+              Ward: {complaint.ward || 'General'}
+            </span>
             <PriorityBadge priority={complaint.priority} />
             <StatusBadge status={complaint.status} />
+
+            {/* Overdue Badge */}
+            {isOverdue && (
+              <span className="inline-flex items-center gap-1 text-[11px] font-extrabold bg-red-600 text-white px-2.5 py-0.5 rounded animate-pulse">
+                <AlertTriangle className="w-3.5 h-3.5" />
+                OVERDUE
+              </span>
+            )}
           </div>
+
           <h1 className="text-xl font-bold text-slate-900 mt-2">{complaint.title}</h1>
           <p className="text-xs text-slate-500 mt-1 flex items-center">
             <MapPin className="w-3.5 h-3.5 mr-1 text-slate-400" />
@@ -127,13 +192,26 @@ export default function ComplaintDetailPage() {
           </p>
         </div>
 
-        <div className="text-left md:text-right border-t md:border-t-0 pt-3 md:pt-0 border-slate-100">
-          <p className="text-xs font-semibold text-slate-400 uppercase">Lodged Date</p>
-          <p className="text-xs font-bold text-slate-800 mt-0.5">
-            {new Date(complaint.created_at).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}
-          </p>
-          <p className="text-[11px] text-slate-500 mt-1">
-            Category: <strong className="text-slate-700">{complaint.category}</strong>
+        <div className="flex flex-col md:items-end gap-2">
+          {/* Community Support Button */}
+          <button
+            onClick={handleSupport}
+            disabled={supporting}
+            className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-xs ${
+              complaint.is_supported_by_me
+                ? 'bg-amber-100 text-amber-900 border border-amber-300 ring-2 ring-amber-400/30'
+                : 'bg-white hover:bg-slate-50 text-slate-700 border border-slate-300'
+            }`}
+          >
+            <ThumbsUp className={`w-4 h-4 ${complaint.is_supported_by_me ? 'text-amber-600 fill-amber-500' : 'text-slate-400'}`} />
+            <span>{complaint.is_supported_by_me ? 'Supported (+1)' : '+1 Support Issue'}</span>
+            <span className="px-1.5 py-0.2 bg-amber-200/80 text-amber-950 rounded-full text-[10px]">
+              {complaint.support_count || 0}
+            </span>
+          </button>
+
+          <p className="text-[11px] text-slate-400">
+            Lodged: {new Date(complaint.created_at).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}
           </p>
         </div>
       </div>
@@ -142,14 +220,21 @@ export default function ComplaintDetailPage() {
         {/* Left Column: Complaint Details & Citizen Info */}
         <div className="lg:col-span-2 space-y-6">
           {/* Detailed Description */}
-          <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs">
-            <h3 className="font-bold text-sm text-slate-900 mb-3 flex items-center space-x-2">
+          <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs space-y-3">
+            <h3 className="font-bold text-sm text-slate-900 flex items-center space-x-2">
               <FileText className="w-4 h-4 text-blue-600" />
               <span>Grievance Description</span>
             </h3>
             <p className="text-xs text-slate-700 leading-relaxed whitespace-pre-line bg-slate-50 p-4 rounded-xl border border-slate-100">
               {complaint.description}
             </p>
+
+            {complaint.priority_reason && (
+              <div className="p-3 bg-amber-50/70 border border-amber-200 rounded-xl text-xs">
+                <p className="font-bold text-amber-900 uppercase text-[10px] tracking-wider mb-0.5">Management Priority Reason:</p>
+                <p className="text-amber-800">{complaint.priority_reason}</p>
+              </div>
+            )}
           </div>
 
           {/* Resolution Details (if available) */}
@@ -208,14 +293,34 @@ export default function ComplaintDetailPage() {
               Assignment & Stakeholders
             </h3>
 
-            <div className="p-3 bg-slate-50 rounded-xl space-y-2 text-xs">
+            <div className="p-3 bg-slate-50 rounded-xl space-y-2.5 text-xs">
               <div className="flex items-center space-x-2">
                 <Building className="w-4 h-4 text-purple-600 shrink-0" />
                 <div>
                   <p className="text-[10px] text-slate-400 uppercase">Assigned Department</p>
-                  <p className="font-bold text-slate-800">{complaint.assigned_department || 'Pending Assignment'}</p>
+                  <p className="font-bold text-slate-800">{complaint.assigned_department || 'Pending Department'}</p>
                 </div>
               </div>
+
+              <div className="flex items-center space-x-2 pt-2 border-t border-slate-200/60">
+                <UserCheck className="w-4 h-4 text-emerald-600 shrink-0" />
+                <div>
+                  <p className="text-[10px] text-slate-400 uppercase">Assigned Field Staff</p>
+                  <p className="font-bold text-slate-800">{complaint.assigned_to_name || 'Unassigned'}</p>
+                </div>
+              </div>
+
+              {complaint.deadline && (
+                <div className="flex items-center space-x-2 pt-2 border-t border-slate-200/60">
+                  <Clock className={`w-4 h-4 shrink-0 ${isOverdue ? 'text-red-600' : 'text-slate-400'}`} />
+                  <div>
+                    <p className="text-[10px] text-slate-400 uppercase">Target Deadline</p>
+                    <p className={`font-bold ${isOverdue ? 'text-red-600 font-extrabold' : 'text-slate-800'}`}>
+                      {new Date(complaint.deadline).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}
+                    </p>
+                  </div>
+                </div>
+              )}
 
               <div className="pt-2 border-t border-slate-200/60 flex items-center space-x-2">
                 <User className="w-4 h-4 text-blue-600 shrink-0" />
@@ -230,13 +335,13 @@ export default function ComplaintDetailPage() {
             </div>
           </div>
 
-          {/* Authorized Staff Update Panel */}
-          {canUpdate && (
+          {/* Action / Update Panel */}
+          {canUpdateStatus && (
             <div className="bg-white p-5 rounded-2xl border border-blue-200 shadow-xs space-y-4">
               <div className="flex items-center space-x-2 text-blue-900 border-b border-blue-100 pb-2">
                 <ShieldAlert className="w-4 h-4 text-blue-600" />
                 <h3 className="font-bold text-xs uppercase tracking-wider">
-                  Update Complaint Status
+                  {canManage ? 'Area Head / Admin Controls' : 'Field Staff Progress Update'}
                 </h3>
               </div>
 
@@ -263,30 +368,71 @@ export default function ComplaintDetailPage() {
                   </select>
                 </div>
 
-                {role === 'ADMIN' && (
-                  <div>
-                    <label className="block font-semibold text-slate-700 mb-1">Assign Department</label>
-                    <select
-                      value={assignedDepartment}
-                      onChange={(e) => setAssignedDepartment(e.target.value)}
-                      className="w-full p-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 bg-white"
-                    >
-                      <option value="">Select Department...</option>
-                      <option value="Water & Electricity Services">Water & Electricity Services</option>
-                      <option value="Public Works & Roads Department">Public Works & Roads Department</option>
-                      <option value="Sanitation Department">Sanitation Department</option>
-                      <option value="Traffic Control Division">Traffic Control Division</option>
-                    </select>
-                  </div>
+                {/* Area Head / Admin Controls */}
+                {canManage && (
+                  <>
+                    <div>
+                      <label className="block font-semibold text-slate-700 mb-1">Assign Staff</label>
+                      <select
+                        value={assignedToId}
+                        onChange={(e) => setAssigneeId(e.target.value)}
+                        className="w-full p-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 bg-white"
+                      >
+                        <option value="">-- Unassigned --</option>
+                        {staffList.map((st) => (
+                          <option key={st.id} value={st.id}>
+                            {st.name} ({st.department_name || 'Staff'})
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="block font-semibold text-slate-700 mb-1">Priority</label>
+                        <select
+                          value={priority}
+                          onChange={(e) => setPriority(e.target.value)}
+                          className="w-full p-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 bg-white"
+                        >
+                          <option value="Low">Low</option>
+                          <option value="Medium">Medium</option>
+                          <option value="High">High</option>
+                          <option value="Urgent">Urgent</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="block font-semibold text-slate-700 mb-1">Deadline</label>
+                        <input
+                          type="datetime-local"
+                          value={deadline}
+                          onChange={(e) => setDeadline(e.target.value)}
+                          className="w-full p-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 bg-white"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block font-semibold text-slate-700 mb-1">Priority Reason / Override Justification</label>
+                      <input
+                        type="text"
+                        value={priorityReason}
+                        onChange={(e) => setPriorityReason(e.target.value)}
+                        placeholder="e.g. 5+ citizens supported; school route obstruction"
+                        className="w-full p-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 bg-white"
+                      />
+                    </div>
+                  </>
                 )}
 
                 <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Work Notes / Progress Update</label>
+                  <label className="block font-semibold text-slate-700 mb-1">Work Remarks / Action Log</label>
                   <textarea
                     rows={2}
                     value={workNotes}
                     onChange={(e) => setWorkNotes(e.target.value)}
-                    placeholder="Describe actions taken (e.g. crew dispatched)..."
+                    placeholder="Describe actions taken or updates..."
                     className="w-full p-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 bg-white"
                   />
                 </div>
@@ -309,7 +455,7 @@ export default function ComplaintDetailPage() {
                   disabled={updating}
                   className="w-full py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold transition-colors disabled:opacity-50"
                 >
-                  {updating ? 'Saving Changes...' : 'Save & Notify Citizen'}
+                  {updating ? 'Saving Changes...' : 'Save & Update Complaint'}
                 </button>
               </form>
             </div>

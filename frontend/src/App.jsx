@@ -37,6 +37,10 @@ import AssignedRequestsPage from './pages/department/AssignedRequestsPage';
 // Traffic Officer Pages
 import TrafficOfficerDashboard from './pages/traffic_officer/TrafficOfficerDashboard';
 
+// Area Head Pages
+import AreaHeadDashboard from './pages/area_head/AreaHeadDashboard';
+import AreaIssueQueuePage from './pages/area_head/AreaIssueQueuePage';
+
 // Common Pages
 import AccessDeniedPage from './pages/common/AccessDeniedPage';
 
@@ -58,6 +62,8 @@ function RoleBasedHomeRedirect() {
   switch (role) {
     case 'ADMIN':
       return <Navigate to="/admin/dashboard" replace />;
+    case 'AREA_HEAD':
+      return <Navigate to="/area-head/dashboard" replace />;
     case 'SERVICE_DEPARTMENT':
       return <Navigate to="/department/dashboard" replace />;
     case 'TRAFFIC_OFFICER':
@@ -125,6 +131,24 @@ export default function App() {
             <Route path="/property-tax" element={<PropertyTaxPage />} />
             <Route path="/property-tax/:id" element={<TaxBillDetailPage />} />
 
+            {/* Area Head Dedicated Routes */}
+            <Route
+              path="/area-head/dashboard"
+              element={
+                <ProtectedRoute allowedRoles={['AREA_HEAD', 'ADMIN']}>
+                  <AreaHeadDashboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/area-head/queue"
+              element={
+                <ProtectedRoute allowedRoles={['AREA_HEAD', 'ADMIN']}>
+                  <AreaIssueQueuePage />
+                </ProtectedRoute>
+              }
+            />
+
             {/* Admin Dedicated Routes */}
             <Route
               path="/admin/dashboard"
@@ -145,7 +169,7 @@ export default function App() {
             <Route
               path="/admin/complaints"
               element={
-                <ProtectedRoute allowedRoles={['ADMIN']}>
+                <ProtectedRoute allowedRoles={['ADMIN', 'AREA_HEAD']}>
                   <ComplaintAdminPage />
                 </ProtectedRoute>
               }
@@ -153,7 +177,7 @@ export default function App() {
             <Route
               path="/admin/utility-notices"
               element={
-                <ProtectedRoute allowedRoles={['ADMIN', 'SERVICE_DEPARTMENT']}>
+                <ProtectedRoute allowedRoles={['ADMIN', 'AREA_HEAD', 'SERVICE_DEPARTMENT']}>
                   <UtilityNoticesPage />
                 </ProtectedRoute>
               }
@@ -161,7 +185,7 @@ export default function App() {
             <Route
               path="/admin/traffic"
               element={
-                <ProtectedRoute allowedRoles={['ADMIN', 'TRAFFIC_OFFICER']}>
+                <ProtectedRoute allowedRoles={['ADMIN', 'AREA_HEAD', 'TRAFFIC_OFFICER', 'SERVICE_DEPARTMENT']}>
                   <TrafficIncidentAdminPage />
                 </ProtectedRoute>
               }
@@ -171,7 +195,7 @@ export default function App() {
             <Route
               path="/department/dashboard"
               element={
-                <ProtectedRoute allowedRoles={['SERVICE_DEPARTMENT', 'ADMIN']}>
+                <ProtectedRoute allowedRoles={['SERVICE_DEPARTMENT', 'ADMIN', 'AREA_HEAD']}>
                   <DepartmentDashboard />
                 </ProtectedRoute>
               }
@@ -179,7 +203,7 @@ export default function App() {
             <Route
               path="/department/assigned"
               element={
-                <ProtectedRoute allowedRoles={['SERVICE_DEPARTMENT', 'ADMIN']}>
+                <ProtectedRoute allowedRoles={['SERVICE_DEPARTMENT', 'ADMIN', 'AREA_HEAD']}>
                   <AssignedRequestsPage />
                 </ProtectedRoute>
               }
@@ -189,7 +213,7 @@ export default function App() {
             <Route
               path="/traffic-officer/dashboard"
               element={
-                <ProtectedRoute allowedRoles={['TRAFFIC_OFFICER', 'ADMIN']}>
+                <ProtectedRoute allowedRoles={['TRAFFIC_OFFICER', 'SERVICE_DEPARTMENT', 'ADMIN']}>
                   <TrafficOfficerDashboard />
                 </ProtectedRoute>
               }

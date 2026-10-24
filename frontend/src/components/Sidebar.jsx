@@ -8,7 +8,7 @@ import {
 import { useAuth } from '../context/AuthContext';
 
 export default function Sidebar({ isOpen, onClose }) {
-  const { role } = useAuth();
+  const { role, user } = useAuth();
 
   const getLinks = () => {
     switch (role) {
@@ -16,18 +16,38 @@ export default function Sidebar({ isOpen, onClose }) {
         return [
           { to: '/admin/dashboard', label: 'Admin Dashboard', icon: LayoutDashboard },
           { to: '/admin/complaints', label: 'All Complaints', icon: ClipboardList },
-          { to: '/admin/citizens', label: 'Citizen Directory', icon: Users },
+          { to: '/admin/citizens', label: 'User & Role Directory', icon: Users },
           { to: '/admin/utility-notices', label: 'Utility Notices', icon: BellRing },
           { to: '/admin/traffic', label: 'Traffic Incidents', icon: Car },
           { to: '/property-tax', label: 'Property Tax Records', icon: Receipt },
         ];
-      case 'SERVICE_DEPARTMENT':
+      case 'AREA_HEAD':
         return [
+          { to: '/area-head/dashboard', label: 'Area Operations', icon: LayoutDashboard },
+          { to: '/area-head/queue', label: 'Area Issue Queue', icon: ClipboardList },
+          { to: '/admin/complaints', label: 'All Complaints', icon: AlertCircle },
+          { to: '/admin/utility-notices', label: 'Utility Notices', icon: BellRing },
+          { to: '/admin/traffic', label: 'Traffic Overview', icon: Car },
+        ];
+      case 'SERVICE_DEPARTMENT': {
+        const isTrafficStaff = user?.profile?.department_name?.toLowerCase().includes('traffic');
+        const links = [
           { to: '/department/dashboard', label: 'Department Overview', icon: LayoutDashboard },
           { to: '/department/assigned', label: 'Assigned Work Orders', icon: ClipboardList },
-          { to: '/services/water', label: 'Water Service Operations', icon: Droplets },
-          { to: '/services/electricity', label: 'Electricity Operations', icon: Zap },
         ];
+        if (isTrafficStaff) {
+          links.push(
+            { to: '/admin/traffic', label: 'Incident Control Center', icon: Car },
+            { to: '/services/traffic', label: 'Road Obstructions & Alerts', icon: AlertCircle }
+          );
+        } else {
+          links.push(
+            { to: '/services/water', label: 'Water Service Operations', icon: Droplets },
+            { to: '/services/electricity', label: 'Electricity Operations', icon: Zap }
+          );
+        }
+        return links;
+      }
       case 'TRAFFIC_OFFICER':
         return [
           { to: '/traffic-officer/dashboard', label: 'Officer Dashboard', icon: LayoutDashboard },
@@ -37,7 +57,7 @@ export default function Sidebar({ isOpen, onClose }) {
       default: // CITIZEN
         return [
           { to: '/citizen/dashboard', label: 'Citizen Dashboard', icon: LayoutDashboard },
-          { to: '/complaints', label: 'My Complaints', icon: AlertCircle },
+          { to: '/complaints', label: 'Complaints & Support', icon: AlertCircle },
           { to: '/complaints/new', label: 'Lodge New Complaint', icon: PlusCircle },
           { to: '/services/water', label: 'Water Services', icon: Droplets },
           { to: '/services/electricity', label: 'Electricity Services', icon: Zap },
