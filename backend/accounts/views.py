@@ -161,6 +161,8 @@ class CitizenListAPIView(views.APIView):
         citizens = User.objects.filter(profile__role=UserRole.CITIZEN).select_related('profile').order_by('-date_joined')
         return Response(UserSerializer(citizens, many=True).data)
 
+from .models import UserProfile, UserRole, Notification, Ward, CITY_WARDS, get_user_authorized_wards
+
 class StaffListAPIView(views.APIView):
     permission_classes = [permissions.IsAuthenticated]
 
@@ -178,18 +180,15 @@ class StaffListAPIView(views.APIView):
 
         if department:
             staff_users = staff_users.filter(profile__department_name__icontains=department)
-        if ward:
-            from django.db.models import Q
-            staff_users = staff_users.filter(
-                Q(profile__assigned_zone__icontains=ward) | 
-                Q(profile__assigned_zone__isnull=True) | 
-                Q(profile__assigned_zone='') |
-                Q(profile__assigned_zone__icontains='City-wide')
-            )
-
-        data = []
+        
+        results = []
         for u in staff_users:
-            data.append({
+            if ward:
+                u_wards = get_user_authorized_wards(u)
+                if ward not in u_wards and u_wards != list(CITY_WARDS):
+                    continue
+
+            results.append({
                 'id': u.id,
                 'username': u.username,
                 'name': u.get_full_name() or u.username,
@@ -198,7 +197,19 @@ class StaffListAPIView(views.APIView):
                 'department_name': u.profile.department_name,
                 'assigned_zone': u.profile.assigned_zone
             })
+        return Response(results)
+
+class WardListAPIView(views.APIView):
+    permission_classes = [permissions.AllowAny]
+
+    def get(self, request):
+        wards = Ward.objects.all().order_by('ward_number')
+        if not wards.exists():
+            data = [{'id': i, 'name': f'Ward {i}', 'ward_number': i, 'description': f'Municipal Ward {i}'} for i in range(1, 11)]
+        else:
+            data = [{'id': w.id, 'name': w.name, 'ward_number': w.ward_number, 'description': w.description} for w in wards]
         return Response(data)
+
 
 class UserManagementAPIView(views.APIView):
     permission_classes = [IsAdminUserRole]

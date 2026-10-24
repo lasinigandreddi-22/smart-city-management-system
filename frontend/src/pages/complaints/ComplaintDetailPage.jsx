@@ -40,6 +40,12 @@ export default function ComplaintDetailPage() {
   const [showAcknowledgeModal, setShowAcknowledgeModal] = useState(false);
   const [ackResolutionDetails, setAckResolutionDetails] = useState('');
 
+  // Citizen confirmation & reopen modals
+  const [showCitizenConfirmModal, setShowCitizenConfirmModal] = useState(false);
+  const [citizenRemarks, setCitizenRemarks] = useState('');
+  const [showCitizenReopenModal, setShowCitizenReopenModal] = useState(false);
+  const [citizenReopenReason, setCitizenReopenReason] = useState('');
+
   const isEmployee = role === 'EMPLOYEE' || role === 'SERVICE_DEPARTMENT' || role === 'TRAFFIC_OFFICER';
   const canManage = role === 'ADMIN' || role === 'AREA_HEAD';
   const canUpdateStatus = canManage || isEmployee;
@@ -188,6 +194,51 @@ export default function ComplaintDetailPage() {
       loadComplaint();
     } catch (err) {
       alert(err.message || 'Failed to return complaint.');
+    } finally {
+      setUpdating(false);
+    }
+  };
+
+  // Step 7: Citizen Confirms Resolution (Closed)
+  const handleCitizenConfirm = async (e) => {
+    if (e) e.preventDefault();
+    setUpdating(true);
+    try {
+      await api.complaints.update(id, {
+        action: 'confirm_resolution',
+        notes: citizenRemarks || 'Citizen verified and confirmed that the issue has been successfully resolved.'
+      });
+      setShowCitizenConfirmModal(false);
+      setCitizenRemarks('');
+      setUpdateMsg('Thank you! You have confirmed the resolution. This complaint is now officially Closed.');
+      loadComplaint();
+    } catch (err) {
+      alert(err.message || 'Failed to confirm resolution.');
+    } finally {
+      setUpdating(false);
+    }
+  };
+
+  // Step 7: Citizen Reports Issue Still Unresolved (Reopen to In Progress)
+  const handleCitizenReopen = async (e) => {
+    if (e) e.preventDefault();
+    if (!citizenReopenReason.trim()) {
+      alert('Please explain what remains unresolved or requires further action.');
+      return;
+    }
+    setUpdating(true);
+    try {
+      await api.complaints.update(id, {
+        action: 'reopen',
+        return_reason: citizenReopenReason,
+        notes: `Citizen reported still unresolved: ${citizenReopenReason}`
+      });
+      setShowCitizenReopenModal(false);
+      setCitizenReopenReason('');
+      setUpdateMsg('Issue reported as unresolved and returned to department work queue.');
+      loadComplaint();
+    } catch (err) {
+      alert(err.message || 'Failed to reopen complaint.');
     } finally {
       setUpdating(false);
     }
@@ -588,6 +639,58 @@ export default function ComplaintDetailPage() {
             </div>
           </div>
 
+          {/* CITIZEN RESOLUTION CONFIRMATION PANEL */}
+          {(role === 'CITIZEN' || user?.id === complaint.citizen) && complaint.status === 'Resolved' && (
+            <div className="bg-emerald-50 border-2 border-emerald-400 p-5 rounded-2xl shadow-sm space-y-3">
+              <div className="flex items-center space-x-2 text-emerald-950 border-b border-emerald-200 pb-2">
+                <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
+                <h3 className="font-bold text-xs uppercase tracking-wider">
+                  Citizen Resolution Confirmation
+                </h3>
+              </div>
+              <p className="text-xs text-emerald-900 leading-relaxed">
+                The municipal team has reported this grievance as <strong>Resolved</strong>. Please inspect the site and confirm if the work was completed to your satisfaction, or report it if the problem persists.
+              </p>
+              {complaint.resolution_details && (
+                <div className="bg-white p-3 rounded-xl border border-emerald-200 text-xs">
+                  <p className="font-semibold text-slate-700">Official Resolution Details:</p>
+                  <p className="text-slate-600 mt-0.5">{complaint.resolution_details}</p>
+                </div>
+              )}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={() => setShowCitizenConfirmModal(true)}
+                  disabled={updating}
+                  className="w-full py-2.5 px-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-xs shadow-sm transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+                >
+                  <CheckCircle2 className="w-4 h-4" />
+                  <span>Confirm Problem Resolved</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowCitizenReopenModal(true)}
+                  disabled={updating}
+                  className="w-full py-2.5 px-3 bg-amber-600 hover:bg-amber-700 text-white rounded-xl font-bold text-xs shadow-sm transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+                >
+                  <AlertTriangle className="w-4 h-4" />
+                  <span>Report Still Unresolved</span>
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* CITIZEN OFFICIALLY CLOSED NOTICE */}
+          {(role === 'CITIZEN' || user?.id === complaint.citizen) && complaint.status === 'Closed' && (
+            <div className="bg-slate-50 border border-slate-200 p-4 rounded-2xl text-xs text-slate-700 flex items-center space-x-3">
+              <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
+              <div>
+                <p className="font-bold text-slate-900">Issue Confirmed & Closed</p>
+                <p className="text-slate-500 mt-0.5">Thank you for validating this resolution. The civic work order is officially complete.</p>
+              </div>
+            </div>
+          )}
+
           {/* AREA HEAD INITIAL REVIEW ACTIONS */}
           {canManage && !complaint.is_confirmed && complaint.status === 'Submitted' && (
             <div className="bg-white p-5 rounded-2xl border border-amber-300 shadow-xs space-y-3">
@@ -955,6 +1058,97 @@ export default function ComplaintDetailPage() {
                 className="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl font-bold disabled:opacity-50"
               >
                 {updating ? 'Returning...' : 'Return to Staff'}
+              </button>
+            </div>
+          </form>
+        </Modal>
+      )}
+
+      {/* MODAL: Citizen Confirm Resolution */}
+      {showCitizenConfirmModal && (
+        <Modal
+          isOpen={showCitizenConfirmModal}
+          onClose={() => setShowCitizenConfirmModal(false)}
+          title={`Confirm Problem Resolved (#${complaint.complaint_ref})`}
+        >
+          <form onSubmit={handleCitizenConfirm} className="space-y-4 text-xs">
+            <p className="text-slate-600">
+              Please confirm that the reported problem has been resolved on site to your satisfaction. This will officially close the complaint ticket.
+            </p>
+
+            <div>
+              <label className="block font-semibold text-slate-700 mb-1">
+                Satisfaction Feedback / Remarks (Optional)
+              </label>
+              <textarea
+                rows={3}
+                value={citizenRemarks}
+                onChange={(e) => setCitizenRemarks(e.target.value)}
+                placeholder="Share any feedback about the resolution quality or staff responsiveness..."
+                className="w-full p-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 bg-white"
+              />
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setShowCitizenConfirmModal(false)}
+                className="px-4 py-2 border border-slate-300 rounded-xl text-slate-700 font-semibold cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={updating}
+                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold disabled:opacity-50 cursor-pointer"
+              >
+                {updating ? 'Confirming...' : 'Confirm Resolution & Close Issue'}
+              </button>
+            </div>
+          </form>
+        </Modal>
+      )}
+
+      {/* MODAL: Citizen Report Still Unresolved */}
+      {showCitizenReopenModal && (
+        <Modal
+          isOpen={showCitizenReopenModal}
+          onClose={() => setShowCitizenReopenModal(false)}
+          title={`Report Issue as Unresolved (#${complaint.complaint_ref})`}
+        >
+          <form onSubmit={handleCitizenReopen} className="space-y-4 text-xs">
+            <p className="text-slate-600">
+              If the problem was not fixed or has resurfaced, please describe what still requires attention. This will return the complaint to <strong>In Progress</strong> for field staff.
+            </p>
+
+            <div>
+              <label className="block font-semibold text-slate-700 mb-1">
+                Issue Description / What is still unresolved? (Required) *
+              </label>
+              <textarea
+                rows={4}
+                value={citizenReopenReason}
+                onChange={(e) => setCitizenReopenReason(e.target.value)}
+                placeholder="Explain what was not completed or what problem is still occurring on site..."
+                className="w-full p-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-amber-500 bg-white"
+                required
+              />
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setShowCitizenReopenModal(false)}
+                className="px-4 py-2 border border-slate-300 rounded-xl text-slate-700 font-semibold cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={updating}
+                className="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl font-bold disabled:opacity-50 cursor-pointer"
+              >
+                {updating ? 'Submitting...' : 'Submit & Reopen Issue'}
               </button>
             </div>
           </form>

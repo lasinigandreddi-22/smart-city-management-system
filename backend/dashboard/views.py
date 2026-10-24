@@ -5,7 +5,7 @@ from rest_framework.response import Response
 from django.contrib.auth.models import User
 from django.db.models import Count, Sum, Q
 
-from accounts.models import UserRole
+from accounts.models import UserRole, CITY_WARDS, get_user_authorized_wards
 from complaints.models import Complaint, ComplaintStatus
 from utilities.models import WaterNotice, WaterServiceRequest, ElectricityNotice, ElectricityServiceRequest, NoticeStatus
 from traffic.models import TrafficIncident, TrafficCitizenReport, IncidentStatus, IncidentSeverity, IncidentType
@@ -229,7 +229,7 @@ class AreaHeadDashboardAPIView(views.APIView):
         if role not in [UserRole.AREA_HEAD, UserRole.ADMIN] and not request.user.is_staff and not request.user.is_superuser:
             return Response({'error': 'Permission denied. Area Head or Admin access required.'}, status=403)
 
-        assigned_zone = getattr(request.user.profile, 'assigned_zone', '')
+        head_wards = get_user_authorized_wards(request.user)
         user_dept = getattr(request.user.profile, 'department_name', '')
 
         # Base queryset
@@ -237,9 +237,12 @@ class AreaHeadDashboardAPIView(views.APIView):
             'citizen', 'assigned_to', 'confirmed_by', 'completion_submitted_by', 'acknowledged_by'
         )
 
-        # Enforce Area Head Zone Isolation (cannot be bypassed by query params)
-        if assigned_zone and assigned_zone != 'City-wide' and role == UserRole.AREA_HEAD:
-            queryset = queryset.filter(Q(ward__icontains=assigned_zone) | Q(location__icontains=assigned_zone))
+        # Enforce Area Head Ward Isolation (cannot be bypassed by query params)
+        if head_wards and head_wards != list(CITY_WARDS) and role == UserRole.AREA_HEAD:
+            ward_filter = request.query_params.get('ward')
+            if ward_filter and ward_filter not in head_wards:
+                return Response({'error': f"You do not have access to {ward_filter}. Your jurisdiction is {', '.join(head_wards)}."}, status=403)
+            queryset = queryset.filter(ward__in=head_wards)
         else:
             ward_filter = request.query_params.get('ward')
             if ward_filter:
@@ -306,13 +309,13 @@ class AreaHeadDashboardAPIView(views.APIView):
             profile__role__in=[UserRole.EMPLOYEE, UserRole.SERVICE_DEPARTMENT, UserRole.TRAFFIC_OFFICER]
         ).select_related('profile').order_by('first_name', 'username')
 
-        if assigned_zone and assigned_zone != 'City-wide' and role == UserRole.AREA_HEAD:
-            staff_query = staff_query.filter(
-                Q(profile__assigned_zone__icontains=assigned_zone) | 
-                Q(profile__assigned_zone__isnull=True) | 
-                Q(profile__assigned_zone='') | 
-                Q(profile__assigned_zone__icontains='City-wide')
-            )
+        if head_wards and head_wards != list(CITY_WARDS) and role == UserRole.AREA_HEAD:
+            scoped_staff = []
+            for s in staff_query:
+                s_wards = get_user_authorized_wards(s)
+                if s_wards == list(CITY_WARDS) or any(hw in s_wards for hw in head_wards):
+                    scoped_staff.append(s)
+            staff_query = scoped_staff
 
         staff_data = [
             {
@@ -362,7 +365,7 @@ class AreaHeadDashboardAPIView(views.APIView):
             }
 
         return Response({
-            'area_head_zone': assigned_zone or 'All Wards',
+            'area_head_zone': ', '.join(head_wards) if head_wards else 'All Wards',
             'department_focus': user_dept or 'All Municipal Domains',
             'summary': {
                 'total_complaints': total_complaints,
@@ -402,13 +405,14 @@ class DepartmentDashboardAPIView(views.APIView):
             'citizen', 'assigned_to', 'confirmed_by', 'completion_submitted_by', 'acknowledged_by'
         )
 
-        # Enforce employee scoping: only tasks assigned to them within department & zone
+        # Enforce employee scoping: only tasks assigned to them within department & ward
         if role in [UserRole.EMPLOYEE, UserRole.SERVICE_DEPARTMENT, UserRole.TRAFFIC_OFFICER]:
+            emp_wards = get_user_authorized_wards(request.user)
             queryset = queryset.filter(assigned_to=request.user)
             if dept_name:
                 queryset = queryset.filter(Q(assigned_department__icontains=dept_name) | Q(category__icontains=dept_name))
-            if emp_zone and emp_zone.lower() not in ['city-wide', 'all', '']:
-                queryset = queryset.filter(ward__icontains=emp_zone)
+            if emp_wards and emp_wards != list(CITY_WARDS):
+                queryset = queryset.filter(ward__in=emp_wards)
 
         # Filtering parameters
         status_filter = request.query_params.get('status')

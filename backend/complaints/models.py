@@ -55,7 +55,7 @@ class Complaint(models.Model):
     category = models.CharField(max_length=50, choices=ComplaintCategory.choices, default=ComplaintCategory.OTHER)
     description = models.TextField()
     location = models.CharField(max_length=255)
-    ward = models.CharField(max_length=100, blank=True, default='North Zone')
+    ward = models.CharField(max_length=100, blank=True, default='Ward 1')
     priority = models.CharField(max_length=20, choices=ComplaintPriority.choices, default=ComplaintPriority.MEDIUM)
     priority_reason = models.CharField(max_length=255, blank=True, default='')
     status = models.CharField(max_length=30, choices=ComplaintStatus.choices, default=ComplaintStatus.SUBMITTED)

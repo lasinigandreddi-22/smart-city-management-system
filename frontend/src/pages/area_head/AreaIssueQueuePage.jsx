@@ -163,11 +163,10 @@ export default function AreaIssueQueuePage() {
               onChange={(e) => setWardFilter(e.target.value)}
               className="w-full p-2 border border-slate-300 rounded-lg bg-white"
             >
-              <option value="">All Wards / Zones</option>
-              <option value="North Zone">North Zone</option>
-              <option value="South Zone">South Zone</option>
-              <option value="Central Zone">Central Zone</option>
-              <option value="East Zone">East Zone</option>
+              <option value="">All Authorized Wards</option>
+              {Array.from({ length: 10 }, (_, i) => `Ward ${i + 1}`).map((w) => (
+                <option key={w} value={w}>{w}</option>
+              ))}
             </select>
           </div>
 

@@ -63,7 +63,7 @@ export default function Sidebar({ isOpen, onClose }) {
       default: // CITIZEN
         return [
           { to: '/citizen/dashboard', label: 'Citizen Dashboard', icon: LayoutDashboard },
-          { to: '/complaints', label: 'Complaints & Support', icon: AlertCircle },
+          { to: '/complaints', label: 'My Complaints', icon: AlertCircle },
           { to: '/services/water', label: 'Water Services', icon: Droplets },
           { to: '/services/electricity', label: 'Electricity Services', icon: Zap },
           { to: '/services/traffic', label: 'Traffic Alerts & Reports', icon: Car },

@@ -420,4 +420,159 @@ class SmartCityAPITests(TestCase):
         self.assertIsNotNone(complaint.resolved_at)
         self.assertIsNotNone(complaint.actual_duration)
 
+    def test_area_head_ward_isolation_enforcement(self):
+        # Create Area Head for Ward 1
+        head_w1 = User.objects.create_user(username='head_w1', password='password123', email='w1@test.com')
+        head_w1.profile.role = UserRole.AREA_HEAD
+        head_w1.profile.assigned_zone = 'Ward 1'
+        head_w1.profile.save()
+
+        # Create Complaint in Ward 2
+        c_w2 = Complaint.objects.create(
+            complaint_ref='CMP-W2-001',
+            citizen=self.citizen2,
+            title='Ward 2 Transformer Issue',
+            category='Electricity',
+            ward='Ward 2',
+            location='Ward 2 Sector A',
+            status=ComplaintStatus.SUBMITTED
+        )
+
+        self.client.force_authenticate(user=head_w1)
+
+        # 1. Direct GET on Ward 2 complaint must return 403 Forbidden
+        res_forbidden = self.client.get(f'/api/complaints/{c_w2.id}/')
+        self.assertEqual(res_forbidden.status_code, status.HTTP_403_FORBIDDEN)
+
+        # 2. Querying complaints with ward=Ward 2 must return 403 Forbidden
+        query_forbidden = self.client.get('/api/complaints/?ward=Ward 2')
+        self.assertEqual(query_forbidden.status_code, status.HTTP_403_FORBIDDEN)
+
+        # 3. Area Head dashboard query for unauthorized ward returns 403
+        dash_forbidden = self.client.get('/api/dashboard/area-head/?ward=Ward 2')
+        self.assertEqual(dash_forbidden.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_assignment_validation_department_and_ward_mismatch(self):
+        head = User.objects.create_user(username='head_assign', password='password123', email='head_a@test.com')
+        head.profile.role = UserRole.AREA_HEAD
+        head.profile.assigned_zone = 'Ward 1'
+        head.profile.save()
+
+        # Employee assigned to Electricity in Ward 1
+        emp_elec = User.objects.create_user(username='emp_elec', password='password123', email='elec@test.com')
+        emp_elec.profile.role = UserRole.EMPLOYEE
+        emp_elec.profile.department_name = 'Electricity Services'
+        emp_elec.profile.assigned_zone = 'Ward 1'
+        emp_elec.profile.save()
+
+        # Employee assigned to Water in Ward 2
+        emp_water_w2 = User.objects.create_user(username='emp_w2', password='password123', email='w2@test.com')
+        emp_water_w2.profile.role = UserRole.EMPLOYEE
+        emp_water_w2.profile.department_name = 'Water & Electricity Services'
+        emp_water_w2.profile.assigned_zone = 'Ward 2'
+        emp_water_w2.profile.save()
+
+        # Water complaint in Ward 1
+        complaint = Complaint.objects.create(
+            complaint_ref='CMP-VAL-001',
+            citizen=self.citizen1,
+            title='Ward 1 Water Pipe Burst',
+            category='Water Supply',
+            ward='Ward 1',
+            location='Main Road',
+            status=ComplaintStatus.SUBMITTED,
+            assigned_department='Water Supply'
+        )
+
+        self.client.force_authenticate(user=head)
+
+        # 1. Attempt assigning to employee from wrong department -> 400 Bad Request
+        res_dept_mismatch = self.client.patch(f'/api/complaints/{complaint.id}/', {
+            'assigned_to': emp_elec.id
+        })
+        self.assertEqual(res_dept_mismatch.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('does not match', res_dept_mismatch.data['error'])
+
+        # 2. Attempt assigning to employee from wrong ward -> 400 Bad Request
+        res_ward_mismatch = self.client.patch(f'/api/complaints/{complaint.id}/', {
+            'assigned_to': emp_water_w2.id
+        })
+        self.assertEqual(res_ward_mismatch.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('does not include complaint ward', res_ward_mismatch.data['error'])
+
+    def test_citizen_confirm_and_reopen_lifecycle(self):
+        head = User.objects.create_user(username='head_cl', password='password123', email='head_cl@test.com')
+        head.profile.role = UserRole.AREA_HEAD
+        head.profile.assigned_zone = 'Ward 1'
+        head.profile.save()
+
+        emp = User.objects.create_user(username='emp_cl', password='password123', email='emp_cl@test.com')
+        emp.profile.role = UserRole.EMPLOYEE
+        emp.profile.department_name = 'Water & Electricity Services'
+        emp.profile.assigned_zone = 'Ward 1'
+        emp.profile.save()
+
+        # 1. Citizen 1 lodges complaint
+        self.client.force_authenticate(user=self.citizen1)
+        sub_res = self.client.post('/api/complaints/', {
+            'title': 'Low water pressure on 5th avenue',
+            'category': 'Water Supply',
+            'ward': 'Ward 1',
+            'location': '5th Ave, Ward 1',
+            'description': 'Water pressure dropped below 1 bar since this morning.',
+            'priority': 'Medium'
+        })
+        self.assertEqual(sub_res.status_code, status.HTTP_201_CREATED)
+        c_id = sub_res.data['id']
+
+        # 2. Privacy Rule: Citizen 2 CANNOT access Citizen 1's unconfirmed complaint
+        self.client.force_authenticate(user=self.citizen2)
+        c2_view = self.client.get(f'/api/complaints/{c_id}/')
+        self.assertEqual(c2_view.status_code, status.HTTP_403_FORBIDDEN)
+
+        # 3. Area Head confirms & assigns complaint
+        self.client.force_authenticate(user=head)
+        conf_res = self.client.patch(f'/api/complaints/{c_id}/', {
+            'action': 'confirm',
+            'assigned_to': emp.id,
+            'priority': 'High',
+            'deadline': '2026-11-05T18:00:00Z'
+        })
+        self.assertEqual(conf_res.status_code, status.HTTP_200_OK)
+
+        # 4. Employee submits completion
+        self.client.force_authenticate(user=emp)
+        comp_res = self.client.patch(f'/api/complaints/{c_id}/', {
+            'action': 'submit_completion',
+            'completion_remarks': 'Booster pump pressure regulator calibrated and inlet filter cleared.'
+        })
+        self.assertEqual(comp_res.status_code, status.HTTP_200_OK)
+
+        # 5. Area Head acknowledges completion -> Status becomes RESOLVED
+        self.client.force_authenticate(user=head)
+        ack_res = self.client.patch(f'/api/complaints/{c_id}/', {
+            'action': 'acknowledge',
+            'resolution_details': 'Pump station output verified at 3.5 bar.'
+        })
+        self.assertEqual(ack_res.status_code, status.HTTP_200_OK)
+        self.assertEqual(ack_res.data['status'], 'Resolved')
+
+        # 6. Citizen confirms resolution -> Status becomes CLOSED
+        self.client.force_authenticate(user=self.citizen1)
+        close_res = self.client.patch(f'/api/complaints/{c_id}/', {
+            'action': 'confirm_resolution',
+            'notes': 'Verified pressure is restored. Thank you!'
+        })
+        self.assertEqual(close_res.status_code, status.HTTP_200_OK)
+        self.assertEqual(close_res.data['status'], 'Closed')
+
+        # 7. Reopening: Citizen reports issue persists -> Status reverts to IN_PROGRESS
+        reopen_res = self.client.patch(f'/api/complaints/{c_id}/', {
+            'action': 'reopen',
+            'return_reason': 'Pressure dropped again during evening peak hours.'
+        })
+        self.assertEqual(reopen_res.status_code, status.HTTP_200_OK)
+        self.assertEqual(reopen_res.data['status'], 'In Progress')
+        self.assertIn('Pressure dropped again', reopen_res.data['return_reason'])
+
 

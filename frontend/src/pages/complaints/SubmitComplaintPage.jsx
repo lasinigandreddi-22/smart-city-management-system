@@ -8,7 +8,7 @@ export default function SubmitComplaintPage() {
   const { user } = useAuth();
   const [title, setTitle] = useState('');
   const [category, setCategory] = useState('Water Supply');
-  const [ward, setWard] = useState(user?.profile?.assigned_zone || 'North Zone');
+  const [ward, setWard] = useState(user?.profile?.assigned_zone || 'Ward 1');
   const [location, setLocation] = useState('');
   const [priority, setPriority] = useState('Medium');
   const [description, setDescription] = useState('');
@@ -131,10 +131,9 @@ export default function SubmitComplaintPage() {
                 onChange={(e) => setWard(e.target.value)}
                 className="w-full p-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 bg-white text-slate-900"
               >
-                <option value="North Zone">North Zone (Ward 14)</option>
-                <option value="South Zone">South Zone (Ward 08)</option>
-                <option value="Central Zone">Central Zone</option>
-                <option value="East Zone">East Zone</option>
+                {Array.from({ length: 10 }, (_, i) => `Ward ${i + 1}`).map((w) => (
+                  <option key={w} value={w}>{w}</option>
+                ))}
               </select>
             </div>
 

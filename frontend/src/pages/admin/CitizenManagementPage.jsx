@@ -279,11 +279,10 @@ export default function CitizenManagementPage() {
                 onChange={(e) => setAssignedZone(e.target.value)}
                 className="w-full p-2.5 border border-slate-300 rounded-xl bg-white focus:ring-2 focus:ring-blue-500"
               >
-                <option value="City-wide">City-wide (All Sectors)</option>
-                <option value="North Zone">North Zone (Ward 14)</option>
-                <option value="South Zone">South Zone (Ward 08)</option>
-                <option value="Central Zone">Central Zone</option>
-                <option value="East Zone">East Zone</option>
+                <option value="City-wide">City-wide (All Wards)</option>
+                {Array.from({ length: 10 }, (_, i) => `Ward ${i + 1}`).map((w) => (
+                  <option key={w} value={w}>{w}</option>
+                ))}
               </select>
             </div>
 

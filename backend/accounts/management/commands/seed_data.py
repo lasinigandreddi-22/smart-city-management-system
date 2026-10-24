@@ -3,7 +3,7 @@ from datetime import date, timedelta
 from django.core.management.base import BaseCommand
 from django.contrib.auth.models import User
 from django.utils import timezone
-from accounts.models import UserProfile, UserRole, Notification
+from accounts.models import UserProfile, UserRole, Notification, Ward
 from complaints.models import Complaint, ComplaintStatusHistory, ComplaintStatus, ComplaintPriority, ComplaintCategory
 from utilities.models import WaterNotice, WaterServiceRequest, ElectricityNotice, ElectricityServiceRequest, NoticeStatus
 from traffic.models import TrafficIncident, TrafficCitizenReport, IncidentSeverity, IncidentStatus, IncidentType
@@ -15,7 +15,19 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         self.stdout.write(self.style.NOTICE('Starting Smart City data seeding...'))
 
-        # 1. Create or update Demonstration Accounts
+        # 0. Seed Exactly 10 Wards
+        self.stdout.write(self.style.NOTICE('Seeding 10 Administrative City Wards...'))
+        for i in range(1, 11):
+            w, _ = Ward.objects.update_or_create(
+                ward_number=i,
+                defaults={
+                    'name': f'Ward {i}',
+                    'description': f'Smart City Municipal Ward {i} Civic Administration Sector'
+                }
+            )
+            self.stdout.write(f"  [Ward Seeded] {w.name}")
+
+        # 1. Create or update Demonstration Accounts (Exactly 4 Roles)
         users_data = [
             {
                 'username': 'admin',
@@ -43,7 +55,7 @@ class Command(BaseCommand):
                 'phone': '+91 98765 11111',
                 'address': 'Flat 402, Skyline Residency, Lake View Road',
                 'department_name': '',
-                'assigned_zone': 'North Zone'
+                'assigned_zone': 'Ward 1'
             },
             {
                 'username': 'citizen2',
@@ -57,7 +69,7 @@ class Command(BaseCommand):
                 'phone': '+91 98765 22222',
                 'address': 'Villa 9, Palm Meadows, Greenfield Colony',
                 'department_name': '',
-                'assigned_zone': 'South Zone'
+                'assigned_zone': 'Ward 2'
             },
             {
                 'username': 'department1',
@@ -70,8 +82,8 @@ class Command(BaseCommand):
                 'is_superuser': False,
                 'phone': '+91 98765 33333',
                 'address': 'Public Works Depot, East Sector',
-                'department_name': 'Water & Electricity Services',
-                'assigned_zone': 'North Zone'
+                'department_name': 'Water Department',
+                'assigned_zone': 'Ward 1'
             },
             {
                 'username': 'traffic1',
@@ -84,41 +96,41 @@ class Command(BaseCommand):
                 'is_superuser': False,
                 'phone': '+91 98765 44444',
                 'address': 'Traffic Enforcement Command Center',
-                'department_name': 'Roads & Traffic Department',
-                'assigned_zone': 'North Zone'
+                'department_name': 'Roads, Sanitation & Traffic',
+                'assigned_zone': 'Ward 1'
             },
             {
                 'username': 'head1',
                 'password': 'Head@12345',
-                'email': 'head.north@smartcity.gov.in',
+                'email': 'head.ward1@smartcity.gov.in',
                 'first_name': 'Devendra',
                 'last_name': 'Mehta',
                 'role': UserRole.AREA_HEAD,
                 'is_staff': False,
                 'is_superuser': False,
                 'phone': '+91 98765 77777',
-                'address': 'Ward 14 Zonal Office, North Sector',
+                'address': 'Ward 1 Zonal Office',
                 'department_name': 'Municipal Governance',
-                'assigned_zone': 'North Zone'
+                'assigned_zone': 'Ward 1'
             },
             {
                 'username': 'head2',
                 'password': 'Head@12345',
-                'email': 'head.south@smartcity.gov.in',
+                'email': 'head.ward2@smartcity.gov.in',
                 'first_name': 'Sunita',
                 'last_name': 'Rao',
                 'role': UserRole.AREA_HEAD,
                 'is_staff': False,
                 'is_superuser': False,
                 'phone': '+91 98765 88888',
-                'address': 'South Zonal Administrative Center',
+                'address': 'Ward 2 Administrative Center',
                 'department_name': 'Municipal Governance',
-                'assigned_zone': 'South Zone'
+                'assigned_zone': 'Ward 2'
             },
             {
                 'username': 'department2',
                 'password': 'Dept@12345',
-                'email': 'dept.south@smartcity.gov.in',
+                'email': 'dept.electricity@smartcity.gov.in',
                 'first_name': 'Karan',
                 'last_name': 'Patel',
                 'role': UserRole.EMPLOYEE,
@@ -126,22 +138,36 @@ class Command(BaseCommand):
                 'is_superuser': False,
                 'phone': '+91 98765 55555',
                 'address': 'South Utilities Workshop, Greenfield',
-                'department_name': 'Water & Electricity Services',
-                'assigned_zone': 'South Zone'
+                'department_name': 'Electricity Department',
+                'assigned_zone': 'Ward 2'
             },
             {
                 'username': 'traffic2',
                 'password': 'Traffic@12345',
-                'email': 'traffic.south@smartcity.gov.in',
+                'email': 'traffic.ward2@smartcity.gov.in',
                 'first_name': 'Officer',
                 'last_name': 'Suresh Nair',
                 'role': UserRole.EMPLOYEE,
                 'is_staff': False,
                 'is_superuser': False,
                 'phone': '+91 98765 66666',
-                'address': 'South Highway Patrol Station',
-                'department_name': 'Roads & Traffic Department',
-                'assigned_zone': 'South Zone'
+                'address': 'Ward 2 Patrol Station',
+                'department_name': 'Roads, Sanitation & Traffic',
+                'assigned_zone': 'Ward 2'
+            },
+            {
+                'username': 'tax1',
+                'password': 'Tax@12345',
+                'email': 'tax.collector@smartcity.gov.in',
+                'first_name': 'Ananya',
+                'last_name': 'Deshmukh',
+                'role': UserRole.EMPLOYEE,
+                'is_staff': False,
+                'is_superuser': False,
+                'phone': '+91 98765 99999',
+                'address': 'Municipal Revenue Building, Room 104',
+                'department_name': 'Property Tax Department',
+                'assigned_zone': 'City-wide'
             }
         ]
 
@@ -311,14 +337,14 @@ class Command(BaseCommand):
                 'title': 'Deep Pothole at Lake View Road - 4th Cross',
                 'category': ComplaintCategory.ROADS_TRAFFIC,
                 'location': 'Lake View Road near Landmark Bakery',
-                'ward': 'North Zone',
+                'ward': 'Ward 1',
                 'priority': ComplaintPriority.HIGH,
                 'priority_reason': 'School bus route with multiple two-wheeler skidding incidents reported.',
                 'status': ComplaintStatus.IN_PROGRESS,
                 'is_confirmed': True,
                 'confirmed_by': head_user,
                 'confirmed_at': timezone.now() - timedelta(days=1),
-                'assigned_department': 'Roads & Traffic Department',
+                'assigned_department': 'Roads, Sanitation & Traffic',
                 'assigned_to': traffic_user,
                 'assigned_by': head_user,
                 'assigned_at': timezone.now() - timedelta(days=1),
@@ -328,7 +354,7 @@ class Command(BaseCommand):
                 'supporters': [citizen1, citizen2],
                 'history': [
                     ('New', ComplaintStatus.SUBMITTED, 'Complaint registered online by citizen.', citizen1),
-                    (ComplaintStatus.SUBMITTED, ComplaintStatus.ASSIGNED, 'Assigned to Roads & Traffic repair crew by Area Head.', head_user),
+                    (ComplaintStatus.SUBMITTED, ComplaintStatus.ASSIGNED, 'Assigned to Roads, Sanitation & Traffic repair crew by Area Head.', head_user),
                     (ComplaintStatus.ASSIGNED, ComplaintStatus.IN_PROGRESS, 'Cold-mix asphalt patch material dispatched with repair crew.', traffic_user)
                 ]
             },
@@ -338,14 +364,14 @@ class Command(BaseCommand):
                 'title': 'Muddy & Discolored Tap Water Supply',
                 'category': ComplaintCategory.WATER_SUPPLY,
                 'location': 'Flat 402, Skyline Residency',
-                'ward': 'North Zone',
+                'ward': 'Ward 1',
                 'priority': ComplaintPriority.URGENT,
                 'priority_reason': 'Contaminated drinking water affecting 40+ families; urgent health risk.',
                 'status': ComplaintStatus.ASSIGNED,
                 'is_confirmed': True,
                 'confirmed_by': head_user,
                 'confirmed_at': timezone.now() - timedelta(days=2),
-                'assigned_department': 'Water & Electricity Services',
+                'assigned_department': 'Water Department',
                 'assigned_to': dept_user,
                 'assigned_by': head_user,
                 'assigned_at': timezone.now() - timedelta(days=2),
@@ -364,15 +390,15 @@ class Command(BaseCommand):
                 'title': 'Garbage Dump Overflow at Sector 4 Park Corner',
                 'category': ComplaintCategory.SANITATION,
                 'location': 'Corner of Sector 4 Public Park',
-                'ward': 'North Zone',
+                'ward': 'Ward 1',
                 'priority': ComplaintPriority.MEDIUM,
                 'priority_reason': 'General sanitation overflow.',
                 'status': ComplaintStatus.RESOLVED,
                 'is_confirmed': True,
                 'confirmed_by': head_user,
                 'confirmed_at': timezone.now() - timedelta(days=3),
-                'assigned_department': 'Water & Electricity Services',
-                'assigned_to': dept_user,
+                'assigned_department': 'Roads, Sanitation & Traffic',
+                'assigned_to': traffic_user,
                 'assigned_by': head_user,
                 'assigned_at': timezone.now() - timedelta(days=3),
                 'acknowledged_by': head_user,
@@ -386,7 +412,7 @@ class Command(BaseCommand):
                 'history': [
                     ('New', ComplaintStatus.SUBMITTED, 'Logged by citizen.', citizen1),
                     (ComplaintStatus.SUBMITTED, ComplaintStatus.ASSIGNED, 'Sanitation crew dispatched.', head_user),
-                    (ComplaintStatus.ASSIGNED, ComplaintStatus.PENDING_VERIFICATION, 'Waste cleared by crew; submitted for Area Head review.', dept_user),
+                    (ComplaintStatus.ASSIGNED, ComplaintStatus.PENDING_VERIFICATION, 'Waste cleared by crew; submitted for Area Head review.', traffic_user),
                     (ComplaintStatus.PENDING_VERIFICATION, ComplaintStatus.RESOLVED, 'Resolution verified and acknowledged by Area Head.', head_user)
                 ]
             },
@@ -396,7 +422,7 @@ class Command(BaseCommand):
                 'title': 'Storm Water Drain Blocked with Construction Debris',
                 'category': ComplaintCategory.DRAINAGE,
                 'location': 'Greenfield Colony Main Gate',
-                'ward': 'South Zone',
+                'ward': 'Ward 2',
                 'priority': ComplaintPriority.MEDIUM,
                 'priority_reason': 'Drainage backup risk if unseasonal rains occur.',
                 'status': ComplaintStatus.SUBMITTED,
@@ -408,7 +434,7 @@ class Command(BaseCommand):
                 'resolution_details': '',
                 'supporters': [citizen2],
                 'history': [
-                    ('New', ComplaintStatus.SUBMITTED, 'Submitted via citizen portal. Awaiting South Zone Area Head review.', citizen2)
+                    ('New', ComplaintStatus.SUBMITTED, 'Submitted via citizen portal. Awaiting Ward 2 Area Head review.', citizen2)
                 ]
             },
             {
@@ -417,14 +443,14 @@ class Command(BaseCommand):
                 'title': 'Malfunctioning Streetlight Cluster on 80ft Ring Road',
                 'category': ComplaintCategory.ELECTRICITY,
                 'location': '80ft Ring Road, Near Junction 4',
-                'ward': 'North Zone',
+                'ward': 'Ward 1',
                 'priority': ComplaintPriority.HIGH,
                 'priority_reason': 'Dark stretch of high-speed corridor creating critical pedestrian accident risk.',
                 'status': ComplaintStatus.UNDER_REVIEW,
                 'is_confirmed': True,
                 'confirmed_by': head_user,
                 'confirmed_at': timezone.now() - timedelta(hours=4),
-                'assigned_department': 'Water & Electricity Services',
+                'assigned_department': 'Electricity Department',
                 'assigned_to': None,
                 'deadline': timezone.now() + timedelta(days=1),
                 'description': 'Six consecutive LED poles are completely dark creating a severe blind spot at the pedestrian crossing.',
@@ -440,15 +466,15 @@ class Command(BaseCommand):
                 'citizen': citizen1,
                 'title': 'Major Water Main Burst Flooding Pedestrian Sidewalk',
                 'category': ComplaintCategory.WATER_SUPPLY,
-                'location': 'Sector 5 Main Avenue, North Ward',
-                'ward': 'North Zone',
+                'location': 'Sector 5 Main Avenue, Ward 1',
+                'ward': 'Ward 1',
                 'priority': ComplaintPriority.URGENT,
                 'priority_reason': 'Pressurized potable water main ruptured; washing out road foundation.',
                 'status': ComplaintStatus.PENDING_VERIFICATION,
                 'is_confirmed': True,
                 'confirmed_by': head_user,
                 'confirmed_at': timezone.now() - timedelta(days=1),
-                'assigned_department': 'Water & Electricity Services',
+                'assigned_department': 'Water Department',
                 'assigned_to': dept_user,
                 'assigned_by': head_user,
                 'assigned_at': timezone.now() - timedelta(days=1),
@@ -472,12 +498,12 @@ class Command(BaseCommand):
                 'title': 'Abandoned Heavy Dump Truck Obstructing Hospital Emergency Gate',
                 'category': ComplaintCategory.ROADS_TRAFFIC,
                 'location': 'Civil Hospital Emergency Gate Road',
-                'ward': 'North Zone',
+                'ward': 'Ward 1',
                 'priority': ComplaintPriority.URGENT,
                 'priority_reason': 'Direct obstruction to life-saving ambulance entry corridor.',
                 'status': ComplaintStatus.SUBMITTED,
                 'is_confirmed': False,
-                'assigned_department': 'Roads & Traffic Department',
+                'assigned_department': 'Roads, Sanitation & Traffic',
                 'assigned_to': None,
                 'deadline': timezone.now() + timedelta(hours=6),
                 'description': 'Commercial flatbed truck with broken axle left directly across the ambulance entrance.',
@@ -493,15 +519,15 @@ class Command(BaseCommand):
                 'title': 'Open Sewage Manhole Cover near Primary School',
                 'category': ComplaintCategory.SANITATION,
                 'location': 'Little Angels Nursery Lane, Sector 3',
-                'ward': 'North Zone',
+                'ward': 'Ward 1',
                 'priority': ComplaintPriority.URGENT,
                 'priority_reason': 'Immediate fall hazard for young children walking to school.',
                 'status': ComplaintStatus.ASSIGNED,
                 'is_confirmed': True,
                 'confirmed_by': head_user,
                 'confirmed_at': timezone.now() - timedelta(days=2),
-                'assigned_department': 'Water & Electricity Services',
-                'assigned_to': dept_user,
+                'assigned_department': 'Roads, Sanitation & Traffic',
+                'assigned_to': traffic_user,
                 'assigned_by': head_user,
                 'assigned_at': timezone.now() - timedelta(days=2),
                 'deadline': timezone.now() - timedelta(days=2),  # Overdue
@@ -516,27 +542,27 @@ class Command(BaseCommand):
             {
                 'ref': 'CMP-2026-S101',
                 'citizen': citizen2,
-                'title': 'Low Water Pressure and Valve Leak in South Sector 2',
-                'category': ComplaintCategory.WATER_SUPPLY,
+                'title': 'High Voltage Grid Fluctuation in Greenfield Sector',
+                'category': ComplaintCategory.ELECTRICITY,
                 'location': 'Greenfield Colony Block B',
-                'ward': 'South Zone',
+                'ward': 'Ward 2',
                 'priority': ComplaintPriority.MEDIUM,
-                'priority_reason': 'Sustained low pressure during peak morning hours.',
+                'priority_reason': 'Sustained voltage spikes threatening domestic electrical appliances.',
                 'status': ComplaintStatus.ASSIGNED,
                 'is_confirmed': True,
                 'confirmed_by': head2_user,
                 'confirmed_at': timezone.now() - timedelta(days=1),
-                'assigned_department': 'Water & Electricity Services',
+                'assigned_department': 'Electricity Department',
                 'assigned_to': dept2_user,
                 'assigned_by': head2_user,
                 'assigned_at': timezone.now() - timedelta(days=1),
                 'deadline': timezone.now() + timedelta(days=3),
-                'description': 'Underground distribution valve has persistent leak resulting in inadequate pressure to high-rise overhead tanks.',
+                'description': 'Local step-down transformer producing erratic voltage surges during evening peak load.',
                 'resolution_details': '',
                 'supporters': [citizen2],
                 'history': [
                     ('New', ComplaintStatus.SUBMITTED, 'Submitted by resident.', citizen2),
-                    (ComplaintStatus.SUBMITTED, ComplaintStatus.ASSIGNED, 'Assigned by South Area Head to South Water crew.', head2_user)
+                    (ComplaintStatus.SUBMITTED, ComplaintStatus.ASSIGNED, 'Assigned by Ward 2 Area Head to Electricity crew.', head2_user)
                 ]
             },
             {
@@ -545,14 +571,14 @@ class Command(BaseCommand):
                 'title': 'Fallen Tree Branch Obstructing South Expressway Exit',
                 'category': ComplaintCategory.ROADS_TRAFFIC,
                 'location': 'South Expressway Exit Ramp 3',
-                'ward': 'South Zone',
+                'ward': 'Ward 2',
                 'priority': ComplaintPriority.HIGH,
                 'priority_reason': 'Single lane blocked creating 2km morning traffic tailback.',
                 'status': ComplaintStatus.IN_PROGRESS,
                 'is_confirmed': True,
                 'confirmed_by': head2_user,
                 'confirmed_at': timezone.now() - timedelta(hours=5),
-                'assigned_department': 'Roads & Traffic Department',
+                'assigned_department': 'Roads, Sanitation & Traffic',
                 'assigned_to': traffic2_user,
                 'assigned_by': head2_user,
                 'assigned_at': timezone.now() - timedelta(hours=5),
@@ -562,7 +588,7 @@ class Command(BaseCommand):
                 'supporters': [citizen2],
                 'history': [
                     ('New', ComplaintStatus.SUBMITTED, 'Reported via highway hotline.', citizen2),
-                    (ComplaintStatus.SUBMITTED, ComplaintStatus.ASSIGNED, 'Forwarded by South Area Head to traffic road crew.', head2_user),
+                    (ComplaintStatus.SUBMITTED, ComplaintStatus.ASSIGNED, 'Forwarded by Ward 2 Area Head to road crew.', head2_user),
                     (ComplaintStatus.ASSIGNED, ComplaintStatus.IN_PROGRESS, 'Chainsaw and tow truck arriving at site.', traffic2_user)
                 ]
             }

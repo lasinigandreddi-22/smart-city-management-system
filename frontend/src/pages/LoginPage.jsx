@@ -12,13 +12,17 @@ export default function LoginPage() {
   const navigate = useNavigate();
 
   const demoAccounts = [
-    { label: 'Citizen', username: 'citizen1', password: 'Citizen@12345', desc: 'Lodge complaints, track resolution & durations' },
-    { label: 'Area Head (North)', username: 'head1', password: 'Head@12345', desc: 'North Zone queue, triage & verify completions' },
-    { label: 'Area Head (South)', username: 'head2', password: 'Head@12345', desc: 'South Zone queue, triage & verify completions' },
-    { label: 'Employee (Water - North)', username: 'department1', password: 'Dept@12345', desc: 'North Water work orders & submit completions' },
-    { label: 'Employee (Traffic - North)', username: 'traffic1', password: 'Traffic@12345', desc: 'North Roads & Traffic tasks' },
-    { label: 'Employee (Water - South)', username: 'department2', password: 'Dept@12345', desc: 'South Water work orders & submit completions' },
-    { label: 'City Admin', username: 'admin', password: 'Admin@12345', desc: 'City governance & cross-zone oversight' },
+    { label: 'Citizen', role: 'Citizen', username: 'citizen1', password: 'Citizen@12345', desc: 'Lodge complaints, track resolution & durations' },
+    { label: 'Employee', role: 'Employee', username: 'department1', password: 'Dept@12345', desc: 'Water Services (Ward 1) work orders' },
+    { label: 'Area Head', role: 'Area Head', username: 'head1', password: 'Head@12345', desc: 'Ward 1 triage, assign & verify completions' },
+    { label: 'Admin / Commissioner', role: 'Admin', username: 'admin', password: 'Admin@12345', desc: 'City governance & cross-ward oversight' },
+  ];
+
+  const alternateAccounts = [
+    { label: 'Employee (Roads & Traffic)', username: 'traffic1', password: 'Traffic@12345' },
+    { label: 'Employee (Property Tax)', username: 'tax1', password: 'Tax@12345' },
+    { label: 'Area Head (Ward 2)', username: 'head2', password: 'Head@12345' },
+    { label: 'Employee (Water - Ward 2)', username: 'department2', password: 'Dept@12345' },
   ];
 
   const handleDemoSelect = (acc) => {
@@ -90,11 +94,35 @@ export default function LoginPage() {
                   }`}
                 >
                   <div className="flex items-center justify-between">
-                    <span>{acc.label}</span>
-                    {username === acc.username && <CheckCircle2 className="w-3.5 h-3.5 text-blue-600" />}
+                    <span className="font-semibold">{acc.label}</span>
+                    {username === acc.username && <CheckCircle2 className="w-3.5 h-3.5 text-blue-600 shrink-0 ml-1" />}
                   </div>
+                  <p className="text-[10px] text-slate-500 mt-0.5 line-clamp-1">{acc.desc}</p>
                 </button>
               ))}
+            </div>
+
+            {/* Other department employee / area head accounts */}
+            <div className="mt-3 pt-2.5 border-t border-slate-100">
+              <span className="text-[10px] font-semibold text-slate-400 block mb-1.5 uppercase tracking-wider">
+                Alternate Department / Ward Accounts:
+              </span>
+              <div className="flex flex-wrap gap-1.5">
+                {alternateAccounts.map((alt) => (
+                  <button
+                    key={alt.label}
+                    type="button"
+                    onClick={() => handleDemoSelect(alt)}
+                    className={`px-2 py-1 text-[11px] rounded-lg border transition-colors ${
+                      username === alt.username
+                        ? 'bg-blue-100 border-blue-400 text-blue-800 font-semibold'
+                        : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
+                    }`}
+                  >
+                    {alt.label}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
 
