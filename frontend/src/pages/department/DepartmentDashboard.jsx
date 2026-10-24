@@ -46,18 +46,20 @@ export default function DepartmentDashboard() {
       <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <span className="text-[11px] font-bold text-purple-700 bg-purple-50 border border-purple-200 px-2.5 py-0.5 rounded-full uppercase">
-            Service Operations Wing
+            Employee Operations • {data?.assigned_zone || 'Municipal Ward'}
           </span>
-          <h1 className="text-xl font-bold text-slate-900 mt-2">{data?.department_name}</h1>
-          <p className="text-xs text-slate-500">Service request triage, work order dispatch, and field resolution management</p>
+          <h1 className="text-xl font-bold text-slate-900 mt-2">{data?.department_name || 'Department'} Workstation</h1>
+          <p className="text-xs text-slate-500">
+            Assigned tasks in your authorized department and zone. Execute field work and submit completions for Area Head verification.
+          </p>
         </div>
 
         <Link
-          to="/department/assigned"
+          to="/employee/tasks"
           className="inline-flex items-center justify-center px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold rounded-xl shadow-xs transition-colors"
         >
           <ClipboardList className="w-4 h-4 mr-1.5" />
-          Open Assigned Work Orders
+          Open Assigned Work Queue
         </Link>
       </div>
 
@@ -107,13 +109,13 @@ export default function DepartmentDashboard() {
             <Wrench className="w-4 h-4 text-purple-600" />
             <span>Assigned Civic Complaints & Field Jobs</span>
           </h3>
-          <Link to="/department/assigned" className="text-xs font-bold text-purple-600 hover:text-purple-800">
+          <Link to="/employee/tasks" className="text-xs font-bold text-purple-600 hover:text-purple-800">
             View All Work Orders
           </Link>
         </div>
 
         {data?.assigned_complaints?.length === 0 ? (
-          <p className="text-xs text-slate-400 text-center py-8">No complaints currently assigned to this department.</p>
+          <p className="text-xs text-slate-400 text-center py-8">No tasks currently assigned to your account in this zone.</p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
@@ -123,7 +125,7 @@ export default function DepartmentDashboard() {
                   <th className="py-3 px-4">Citizen</th>
                   <th className="py-3 px-4">Problem & Location</th>
                   <th className="py-3 px-4">Category</th>
-                  <th className="py-3 px-4">Priority</th>
+                  <th className="py-3 px-4">Priority & SLA</th>
                   <th className="py-3 px-4">Status</th>
                   <th className="py-3 px-4 text-right">Action</th>
                 </tr>
@@ -133,12 +135,24 @@ export default function DepartmentDashboard() {
                   <tr key={c.id} className="hover:bg-slate-50/60">
                     <td className="py-3 px-4 font-mono font-bold text-purple-700">{c.ref}</td>
                     <td className="py-3 px-4 font-bold text-slate-900">{c.citizen_name}</td>
-                    <td className="py-3 px-4 max-w-xs truncate">
-                      <p className="font-semibold text-slate-800">{c.title}</p>
+                    <td className="py-3 px-4 max-w-xs">
+                      <p className="font-semibold text-slate-800 truncate">{c.title}</p>
                       <p className="text-[10px] text-slate-400">{c.location}</p>
+                      {c.return_reason && (
+                        <p className="text-[10px] text-amber-800 font-bold bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200 mt-1 truncate">
+                          ↩ Returned: {c.return_reason}
+                        </p>
+                      )}
                     </td>
                     <td className="py-3 px-4">{c.category}</td>
-                    <td className="py-3 px-4"><PriorityBadge priority={c.priority} /></td>
+                    <td className="py-3 px-4">
+                      <PriorityBadge priority={c.priority} />
+                      {c.deadline && (
+                        <p className={`text-[10px] mt-0.5 ${c.is_overdue ? 'text-red-600 font-bold' : 'text-slate-500'}`}>
+                          {c.is_overdue ? '⚠️ Overdue' : `Due: ${new Date(c.deadline).toLocaleDateString()}`}
+                        </p>
+                      )}
+                    </td>
                     <td className="py-3 px-4"><StatusBadge status={c.status} /></td>
                     <td className="py-3 px-4 text-right">
                       <button

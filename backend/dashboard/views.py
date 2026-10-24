@@ -71,11 +71,18 @@ class CitizenDashboardAPIView(views.APIView):
                     'id': c.id, 
                     'ref': c.complaint_ref, 
                     'title': c.title, 
+                    'category': c.category,
                     'ward': c.ward,
                     'status': c.status, 
+                    'is_confirmed': c.is_confirmed,
                     'priority': c.priority, 
                     'priority_reason': c.priority_reason,
                     'deadline': c.deadline,
+                    'expected_duration': c.expected_duration,
+                    'elapsed_duration': c.elapsed_duration,
+                    'remaining_time': c.remaining_time,
+                    'overdue_duration': c.overdue_duration,
+                    'actual_duration': c.actual_duration,
                     'is_overdue': c.is_overdue,
                     'support_count': c.support_count,
                     'date': c.created_at
@@ -93,7 +100,7 @@ class AdminDashboardAPIView(views.APIView):
             return Response({'error': 'Only Admins can view administrative metrics.'}, status=403)
 
         total_citizens = User.objects.filter(profile__role=UserRole.CITIZEN).count()
-        total_staff = User.objects.filter(profile__role__in=[UserRole.SERVICE_DEPARTMENT, UserRole.TRAFFIC_OFFICER]).count()
+        total_staff = User.objects.filter(profile__role__in=[UserRole.EMPLOYEE, UserRole.SERVICE_DEPARTMENT, UserRole.TRAFFIC_OFFICER]).count()
         total_area_heads = User.objects.filter(profile__role=UserRole.AREA_HEAD).count()
         
         all_complaints = Complaint.objects.all()
@@ -226,24 +233,22 @@ class AreaHeadDashboardAPIView(views.APIView):
         user_dept = getattr(request.user.profile, 'department_name', '')
 
         # Base queryset
-        queryset = Complaint.objects.select_related('citizen', 'assigned_to')
+        queryset = Complaint.objects.select_related(
+            'citizen', 'assigned_to', 'confirmed_by', 'completion_submitted_by', 'acknowledged_by'
+        )
 
-        # Filter by query parameters if supplied, otherwise Area Head default zone
-        ward_filter = request.query_params.get('ward')
+        # Enforce Area Head Zone Isolation (cannot be bypassed by query params)
+        if assigned_zone and assigned_zone != 'City-wide' and role == UserRole.AREA_HEAD:
+            queryset = queryset.filter(Q(ward__icontains=assigned_zone) | Q(location__icontains=assigned_zone))
+        else:
+            ward_filter = request.query_params.get('ward')
+            if ward_filter:
+                queryset = queryset.filter(Q(ward__icontains=ward_filter) | Q(location__icontains=ward_filter))
+
         dept_filter = request.query_params.get('department')
         status_filter = request.query_params.get('status')
         priority_filter = request.query_params.get('priority')
         is_overdue_filter = request.query_params.get('overdue')
-
-        if ward_filter:
-            queryset = queryset.filter(Q(ward__icontains=ward_filter) | Q(location__icontains=ward_filter))
-        elif assigned_zone and assigned_zone != 'City-wide' and role == UserRole.AREA_HEAD:
-            # Focus on area head's assigned area/zone
-            queryset = queryset.filter(
-                Q(ward__icontains=assigned_zone) | 
-                Q(location__icontains=assigned_zone) |
-                Q(ward__isnull=True) | Q(ward='')
-            )
 
         if dept_filter:
             queryset = queryset.filter(assigned_department__icontains=dept_filter)
@@ -258,29 +263,35 @@ class AreaHeadDashboardAPIView(views.APIView):
         if is_overdue_filter == 'true':
             queryset = queryset.filter(
                 deadline__lt=now,
-                status__in=[ComplaintStatus.SUBMITTED, ComplaintStatus.ASSIGNED, ComplaintStatus.IN_PROGRESS]
+                status__in=[ComplaintStatus.SUBMITTED, ComplaintStatus.UNDER_REVIEW, ComplaintStatus.ASSIGNED, ComplaintStatus.IN_PROGRESS, ComplaintStatus.PENDING_VERIFICATION]
             )
 
         # Metrics for the scoped area
         total_complaints = queryset.count()
-        unassigned_count = queryset.filter(status=ComplaintStatus.SUBMITTED, assigned_to__isnull=True).count()
+        pending_review_count = queryset.filter(status__in=[ComplaintStatus.SUBMITTED, ComplaintStatus.UNDER_REVIEW], is_confirmed=False).count()
+        unassigned_count = queryset.filter(status__in=[ComplaintStatus.SUBMITTED, ComplaintStatus.UNDER_REVIEW], assigned_to__isnull=True).count()
         in_progress_count = queryset.filter(status__in=[ComplaintStatus.ASSIGNED, ComplaintStatus.IN_PROGRESS]).count()
+        pending_acknowledgements_count = queryset.filter(status=ComplaintStatus.PENDING_VERIFICATION).count()
         resolved_count = queryset.filter(status__in=[ComplaintStatus.RESOLVED, ComplaintStatus.CLOSED]).count()
         high_priority_count = queryset.filter(priority__in=['High', 'Urgent']).count()
         overdue_count = queryset.filter(
             deadline__lt=now,
-            status__in=[ComplaintStatus.SUBMITTED, ComplaintStatus.ASSIGNED, ComplaintStatus.IN_PROGRESS]
+            status__in=[ComplaintStatus.SUBMITTED, ComplaintStatus.UNDER_REVIEW, ComplaintStatus.ASSIGNED, ComplaintStatus.IN_PROGRESS, ComplaintStatus.PENDING_VERIFICATION]
         ).count()
 
         # Top 5-6 Mostly Complained / Supported issues
-        # Requirement: "From that area head take 5-6 and solve them and focus on remaining ones."
         mostly_complained = queryset.annotate(
             supp_count=Count('supports')
         ).order_by('-supp_count', '-created_at')[:6]
 
-        # Top unassigned issues needing immediate triage
+        # Issues awaiting Area Head acknowledgement (Step 6)
+        pending_acknowledgements = queryset.filter(
+            status=ComplaintStatus.PENDING_VERIFICATION
+        ).order_by('-completion_submitted_at', '-updated_at')[:8]
+
+        # Top unassigned / unconfirmed issues needing immediate triage (Step 2)
         unassigned_issues = queryset.filter(
-            status=ComplaintStatus.SUBMITTED,
+            status__in=[ComplaintStatus.SUBMITTED, ComplaintStatus.UNDER_REVIEW],
             assigned_to__isnull=True
         ).order_by('-created_at')[:8]
 
@@ -290,10 +301,18 @@ class AreaHeadDashboardAPIView(views.APIView):
         category_breakdown = list(queryset.values('category').annotate(count=Count('id')).order_by('-count'))
         status_breakdown = list(queryset.values('status').annotate(count=Count('id')).order_by('-count'))
 
-        # Staff list for quick assignment
-        staff_members = User.objects.filter(
-            profile__role__in=[UserRole.SERVICE_DEPARTMENT, UserRole.TRAFFIC_OFFICER]
+        # Staff list for quick assignment (scoped to area or city-wide)
+        staff_query = User.objects.filter(
+            profile__role__in=[UserRole.EMPLOYEE, UserRole.SERVICE_DEPARTMENT, UserRole.TRAFFIC_OFFICER]
         ).select_related('profile').order_by('first_name', 'username')
+
+        if assigned_zone and assigned_zone != 'City-wide' and role == UserRole.AREA_HEAD:
+            staff_query = staff_query.filter(
+                Q(profile__assigned_zone__icontains=assigned_zone) | 
+                Q(profile__assigned_zone__isnull=True) | 
+                Q(profile__assigned_zone='') | 
+                Q(profile__assigned_zone__icontains='City-wide')
+            )
 
         staff_data = [
             {
@@ -303,10 +322,10 @@ class AreaHeadDashboardAPIView(views.APIView):
                 'zone': s.profile.assigned_zone,
                 'active_tasks': Complaint.objects.filter(
                     assigned_to=s,
-                    status__in=[ComplaintStatus.ASSIGNED, ComplaintStatus.IN_PROGRESS]
+                    status__in=[ComplaintStatus.ASSIGNED, ComplaintStatus.IN_PROGRESS, ComplaintStatus.PENDING_VERIFICATION]
                 ).count()
             }
-            for s in staff_members
+            for s in staff_query
         ]
 
         def serialize_item(c):
@@ -317,30 +336,46 @@ class AreaHeadDashboardAPIView(views.APIView):
                 'category': c.category,
                 'ward': c.ward or 'General',
                 'location': c.location,
+                'description': c.description,
                 'priority': c.priority,
                 'priority_reason': c.priority_reason,
                 'status': c.status,
+                'is_confirmed': c.is_confirmed,
+                'confirmed_by_name': c.confirmed_by.get_full_name() or c.confirmed_by.username if c.confirmed_by else None,
+                'confirmed_at': c.confirmed_at,
                 'deadline': c.deadline,
+                'expected_duration': c.expected_duration,
+                'elapsed_duration': c.elapsed_duration,
+                'remaining_time': c.remaining_time,
+                'overdue_duration': c.overdue_duration,
+                'actual_duration': c.actual_duration,
                 'is_overdue': c.is_overdue,
                 'support_count': c.support_count,
                 'assigned_department': c.assigned_department,
                 'assigned_to_id': c.assigned_to_id,
                 'assigned_to_name': c.assigned_to.get_full_name() or c.assigned_to.username if c.assigned_to else None,
+                'completion_remarks': c.completion_remarks,
+                'completion_submitted_at': c.completion_submitted_at,
+                'completion_submitted_by_name': c.completion_submitted_by.get_full_name() or c.completion_submitted_by.username if c.completion_submitted_by else None,
+                'return_reason': c.return_reason,
                 'created_at': c.created_at
             }
 
         return Response({
             'area_head_zone': assigned_zone or 'All Wards',
-            'department_focus': user_dept or 'All Municipal Departments',
+            'department_focus': user_dept or 'All Municipal Domains',
             'summary': {
                 'total_complaints': total_complaints,
+                'pending_review': pending_review_count,
                 'unassigned': unassigned_count,
                 'in_progress': in_progress_count,
+                'pending_acknowledgements': pending_acknowledgements_count,
                 'resolved': resolved_count,
                 'high_priority': high_priority_count,
                 'overdue': overdue_count
             },
             'mostly_complained': [serialize_item(c) for c in mostly_complained],
+            'pending_acknowledgements': [serialize_item(c) for c in pending_acknowledgements],
             'unassigned_queue': [serialize_item(c) for c in unassigned_issues],
             'charts': {
                 'ward_breakdown': ward_breakdown,
@@ -357,17 +392,23 @@ class DepartmentDashboardAPIView(views.APIView):
     def get(self, request):
         role = getattr(request.user.profile, 'role', UserRole.CITIZEN)
         dept_name = getattr(request.user.profile, 'department_name', '')
+        emp_zone = getattr(request.user.profile, 'assigned_zone', '')
         
-        # Allow service department staff, traffic officers, area heads, and admins
-        if role not in [UserRole.SERVICE_DEPARTMENT, UserRole.TRAFFIC_OFFICER, UserRole.AREA_HEAD, UserRole.ADMIN] and not request.user.is_staff:
+        # Allow employee, service department staff, traffic officers, area heads, and admins
+        if role not in [UserRole.EMPLOYEE, UserRole.SERVICE_DEPARTMENT, UserRole.TRAFFIC_OFFICER, UserRole.AREA_HEAD, UserRole.ADMIN] and not request.user.is_staff:
             return Response({'error': 'Permission denied.'}, status=403)
 
-        queryset = Complaint.objects.select_related('citizen', 'assigned_to')
-        if role in [UserRole.SERVICE_DEPARTMENT, UserRole.TRAFFIC_OFFICER]:
+        queryset = Complaint.objects.select_related(
+            'citizen', 'assigned_to', 'confirmed_by', 'completion_submitted_by', 'acknowledged_by'
+        )
+
+        # Enforce employee scoping: only tasks assigned to them within department & zone
+        if role in [UserRole.EMPLOYEE, UserRole.SERVICE_DEPARTMENT, UserRole.TRAFFIC_OFFICER]:
+            queryset = queryset.filter(assigned_to=request.user)
             if dept_name:
-                queryset = queryset.filter(Q(assigned_department__icontains=dept_name) | Q(assigned_to=request.user))
-            else:
-                queryset = queryset.filter(assigned_to=request.user)
+                queryset = queryset.filter(Q(assigned_department__icontains=dept_name) | Q(category__icontains=dept_name))
+            if emp_zone and emp_zone.lower() not in ['city-wide', 'all', '']:
+                queryset = queryset.filter(ward__icontains=emp_zone)
 
         # Filtering parameters
         status_filter = request.query_params.get('status')
@@ -386,37 +427,40 @@ class DepartmentDashboardAPIView(views.APIView):
         if is_overdue == 'true':
             queryset = queryset.filter(
                 deadline__lt=now,
-                status__in=[ComplaintStatus.SUBMITTED, ComplaintStatus.ASSIGNED, ComplaintStatus.IN_PROGRESS]
+                status__in=[ComplaintStatus.SUBMITTED, ComplaintStatus.ASSIGNED, ComplaintStatus.IN_PROGRESS, ComplaintStatus.PENDING_VERIFICATION]
             )
 
         total_assigned = queryset.count()
         in_progress = queryset.filter(status=ComplaintStatus.IN_PROGRESS).count()
-        submitted = queryset.filter(status=ComplaintStatus.SUBMITTED).count()
+        pending_verification = queryset.filter(status=ComplaintStatus.PENDING_VERIFICATION).count()
+        submitted = queryset.filter(status__in=[ComplaintStatus.SUBMITTED, ComplaintStatus.ASSIGNED]).count()
         resolved = queryset.filter(status__in=[ComplaintStatus.RESOLVED, ComplaintStatus.CLOSED]).count()
-        urgent = queryset.filter(priority__in=['High', 'Urgent'], status__in=[ComplaintStatus.SUBMITTED, ComplaintStatus.ASSIGNED, ComplaintStatus.IN_PROGRESS]).count()
+        urgent = queryset.filter(priority__in=['High', 'Urgent']).exclude(status__in=[ComplaintStatus.RESOLVED, ComplaintStatus.CLOSED]).count()
         overdue_count = queryset.filter(
             deadline__lt=now,
-            status__in=[ComplaintStatus.SUBMITTED, ComplaintStatus.ASSIGNED, ComplaintStatus.IN_PROGRESS]
+            status__in=[ComplaintStatus.SUBMITTED, ComplaintStatus.ASSIGNED, ComplaintStatus.IN_PROGRESS, ComplaintStatus.PENDING_VERIFICATION]
         ).count()
 
         # Ordering
         sort_by = request.query_params.get('sort', '-created_at')
         if sort_by == 'deadline':
-            recent_assigned = queryset.order_by('deadline', '-created_at')[:15]
+            recent_assigned = queryset.order_by('deadline', '-created_at')[:25]
         elif sort_by == 'priority':
-            recent_assigned = queryset.order_by('-priority', '-created_at')[:15]
+            recent_assigned = queryset.order_by('-priority', '-created_at')[:25]
         else:
-            recent_assigned = queryset.order_by('-created_at')[:15]
+            recent_assigned = queryset.order_by('-created_at')[:25]
 
         # Utility service requests
         water_reqs = WaterServiceRequest.objects.filter(status__in=['Submitted', 'In Progress']).count()
         elec_reqs = ElectricityServiceRequest.objects.filter(status__in=['Submitted', 'In Progress']).count()
 
         return Response({
-            'department_name': dept_name or 'Municipal Service Department',
+            'department_name': dept_name or 'Municipal Employee Operations',
+            'assigned_zone': emp_zone or 'All Wards',
             'summary': {
                 'total_assigned': total_assigned,
                 'in_progress': in_progress,
+                'pending_verification': pending_verification,
                 'submitted': submitted,
                 'resolved': resolved,
                 'urgent': urgent,
@@ -435,11 +479,20 @@ class DepartmentDashboardAPIView(views.APIView):
                     'location': c.location,
                     'description': c.description,
                     'status': c.status,
+                    'is_confirmed': c.is_confirmed,
                     'priority': c.priority,
                     'priority_reason': c.priority_reason,
                     'deadline': c.deadline,
+                    'expected_duration': c.expected_duration,
+                    'elapsed_duration': c.elapsed_duration,
+                    'remaining_time': c.remaining_time,
+                    'overdue_duration': c.overdue_duration,
+                    'actual_duration': c.actual_duration,
                     'is_overdue': c.is_overdue,
                     'support_count': c.support_count,
+                    'completion_remarks': c.completion_remarks,
+                    'completion_submitted_at': c.completion_submitted_at,
+                    'return_reason': c.return_reason,
                     'resolution_details': c.resolution_details,
                     'created_at': c.created_at
                 }

@@ -6,7 +6,8 @@ from django.dispatch import receiver
 class UserRole(models.TextChoices):
     ADMIN = 'ADMIN', 'City Admin / Commissioner'
     AREA_HEAD = 'AREA_HEAD', 'Area Head / Department Head'
-    SERVICE_DEPARTMENT = 'SERVICE_DEPARTMENT', 'Department Staff'
+    EMPLOYEE = 'EMPLOYEE', 'Employee'
+    SERVICE_DEPARTMENT = 'SERVICE_DEPARTMENT', 'Department Staff (Legacy)'
     CITIZEN = 'CITIZEN', 'Citizen'
     TRAFFIC_OFFICER = 'TRAFFIC_OFFICER', 'Traffic Officer (Legacy Staff)'
 

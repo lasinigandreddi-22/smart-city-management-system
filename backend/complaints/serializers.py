@@ -20,9 +20,18 @@ class ComplaintSerializer(serializers.ModelSerializer):
     citizen_email = serializers.SerializerMethodField()
     citizen_phone = serializers.SerializerMethodField()
     assigned_to_name = serializers.SerializerMethodField()
+    assigned_by_name = serializers.SerializerMethodField()
+    confirmed_by_name = serializers.SerializerMethodField()
+    completion_submitted_by_name = serializers.SerializerMethodField()
+    acknowledged_by_name = serializers.SerializerMethodField()
     support_count = serializers.IntegerField(read_only=True)
     is_supported_by_me = serializers.SerializerMethodField()
     is_overdue = serializers.BooleanField(read_only=True)
+    expected_duration = serializers.CharField(read_only=True)
+    elapsed_duration = serializers.CharField(read_only=True)
+    remaining_time = serializers.CharField(read_only=True)
+    overdue_duration = serializers.CharField(read_only=True)
+    actual_duration = serializers.CharField(read_only=True)
     history = ComplaintStatusHistorySerializer(many=True, read_only=True)
 
     class Meta:
@@ -30,17 +39,24 @@ class ComplaintSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'complaint_ref', 'citizen', 'citizen_name', 'citizen_email', 'citizen_phone',
             'title', 'category', 'description', 'location', 'ward', 'priority', 'priority_reason',
-            'status', 'assigned_department', 'assigned_to', 'assigned_to_name', 'deadline',
+            'status', 'is_confirmed', 'confirmed_by', 'confirmed_by_name', 'confirmed_at',
+            'assigned_department', 'assigned_to', 'assigned_to_name', 'assigned_by', 'assigned_by_name', 'assigned_at',
+            'deadline', 'expected_duration', 'elapsed_duration', 'remaining_time', 'overdue_duration', 'actual_duration',
+            'completion_remarks', 'completion_submitted_at', 'completion_submitted_by', 'completion_submitted_by_name',
+            'acknowledged_by', 'acknowledged_by_name', 'acknowledged_at', 'resolved_at', 'return_reason',
             'resolution_details', 'support_count', 'is_supported_by_me', 'is_overdue',
             'history', 'created_at', 'updated_at'
         ]
-        read_only_fields = ['id', 'complaint_ref', 'citizen', 'created_at', 'updated_at', 'support_count', 'is_overdue']
+        read_only_fields = [
+            'id', 'complaint_ref', 'citizen', 'created_at', 'updated_at', 'support_count', 
+            'is_overdue', 'expected_duration', 'elapsed_duration', 'remaining_time', 'overdue_duration', 'actual_duration'
+        ]
 
     def get_citizen_name(self, obj):
         request = self.context.get('request')
         if request and request.user and request.user.is_authenticated:
             role = getattr(request.user.profile, 'role', UserRole.CITIZEN)
-            if role in [UserRole.ADMIN, UserRole.AREA_HEAD, UserRole.SERVICE_DEPARTMENT, UserRole.TRAFFIC_OFFICER] or request.user == obj.citizen:
+            if role in [UserRole.ADMIN, UserRole.AREA_HEAD, UserRole.EMPLOYEE, UserRole.SERVICE_DEPARTMENT, UserRole.TRAFFIC_OFFICER] or request.user == obj.citizen:
                 return obj.citizen.get_full_name() or obj.citizen.username
         return f"Resident ({obj.ward or 'Verified Citizen'})"
 
@@ -48,7 +64,7 @@ class ComplaintSerializer(serializers.ModelSerializer):
         request = self.context.get('request')
         if request and request.user and request.user.is_authenticated:
             role = getattr(request.user.profile, 'role', UserRole.CITIZEN)
-            if role in [UserRole.ADMIN, UserRole.AREA_HEAD, UserRole.SERVICE_DEPARTMENT, UserRole.TRAFFIC_OFFICER] or request.user == obj.citizen:
+            if role in [UserRole.ADMIN, UserRole.AREA_HEAD, UserRole.EMPLOYEE, UserRole.SERVICE_DEPARTMENT, UserRole.TRAFFIC_OFFICER] or request.user == obj.citizen:
                 return obj.citizen.email
         return ''
 
@@ -56,7 +72,7 @@ class ComplaintSerializer(serializers.ModelSerializer):
         request = self.context.get('request')
         if request and request.user and request.user.is_authenticated:
             role = getattr(request.user.profile, 'role', UserRole.CITIZEN)
-            if role in [UserRole.ADMIN, UserRole.AREA_HEAD, UserRole.SERVICE_DEPARTMENT, UserRole.TRAFFIC_OFFICER] or request.user == obj.citizen:
+            if role in [UserRole.ADMIN, UserRole.AREA_HEAD, UserRole.EMPLOYEE, UserRole.SERVICE_DEPARTMENT, UserRole.TRAFFIC_OFFICER] or request.user == obj.citizen:
                 if hasattr(obj.citizen, 'profile'):
                     return obj.citizen.profile.phone
         return ''
@@ -64,6 +80,26 @@ class ComplaintSerializer(serializers.ModelSerializer):
     def get_assigned_to_name(self, obj):
         if obj.assigned_to:
             return obj.assigned_to.get_full_name() or obj.assigned_to.username
+        return ''
+
+    def get_assigned_by_name(self, obj):
+        if obj.assigned_by:
+            return obj.assigned_by.get_full_name() or obj.assigned_by.username
+        return ''
+
+    def get_confirmed_by_name(self, obj):
+        if obj.confirmed_by:
+            return obj.confirmed_by.get_full_name() or obj.confirmed_by.username
+        return ''
+
+    def get_completion_submitted_by_name(self, obj):
+        if obj.completion_submitted_by:
+            return obj.completion_submitted_by.get_full_name() or obj.completion_submitted_by.username
+        return ''
+
+    def get_acknowledged_by_name(self, obj):
+        if obj.acknowledged_by:
+            return obj.acknowledged_by.get_full_name() or obj.acknowledged_by.username
         return ''
 
     def get_is_supported_by_me(self, obj):

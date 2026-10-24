@@ -64,10 +64,10 @@ function RoleBasedHomeRedirect() {
       return <Navigate to="/admin/dashboard" replace />;
     case 'AREA_HEAD':
       return <Navigate to="/area-head/dashboard" replace />;
+    case 'EMPLOYEE':
     case 'SERVICE_DEPARTMENT':
-      return <Navigate to="/department/dashboard" replace />;
     case 'TRAFFIC_OFFICER':
-      return <Navigate to="/traffic-officer/dashboard" replace />;
+      return <Navigate to="/employee/dashboard" replace />;
     default:
       return <Navigate to="/citizen/dashboard" replace />;
   }
@@ -177,7 +177,7 @@ export default function App() {
             <Route
               path="/admin/utility-notices"
               element={
-                <ProtectedRoute allowedRoles={['ADMIN', 'AREA_HEAD', 'SERVICE_DEPARTMENT']}>
+                <ProtectedRoute allowedRoles={['ADMIN', 'AREA_HEAD', 'SERVICE_DEPARTMENT', 'EMPLOYEE']}>
                   <UtilityNoticesPage />
                 </ProtectedRoute>
               }
@@ -185,17 +185,35 @@ export default function App() {
             <Route
               path="/admin/traffic"
               element={
-                <ProtectedRoute allowedRoles={['ADMIN', 'AREA_HEAD', 'TRAFFIC_OFFICER', 'SERVICE_DEPARTMENT']}>
+                <ProtectedRoute allowedRoles={['ADMIN', 'AREA_HEAD', 'TRAFFIC_OFFICER', 'SERVICE_DEPARTMENT', 'EMPLOYEE']}>
                   <TrafficIncidentAdminPage />
                 </ProtectedRoute>
               }
             />
 
-            {/* Service Department Dedicated Routes */}
+            {/* Unified Employee Routes */}
+            <Route
+              path="/employee/dashboard"
+              element={
+                <ProtectedRoute allowedRoles={['EMPLOYEE', 'SERVICE_DEPARTMENT', 'TRAFFIC_OFFICER', 'ADMIN', 'AREA_HEAD']}>
+                  <DepartmentDashboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/employee/tasks"
+              element={
+                <ProtectedRoute allowedRoles={['EMPLOYEE', 'SERVICE_DEPARTMENT', 'TRAFFIC_OFFICER', 'ADMIN', 'AREA_HEAD']}>
+                  <AssignedRequestsPage />
+                </ProtectedRoute>
+              }
+            />
+
+            {/* Legacy Service Department Routes (Backward Compatibility) */}
             <Route
               path="/department/dashboard"
               element={
-                <ProtectedRoute allowedRoles={['SERVICE_DEPARTMENT', 'ADMIN', 'AREA_HEAD']}>
+                <ProtectedRoute allowedRoles={['EMPLOYEE', 'SERVICE_DEPARTMENT', 'ADMIN', 'AREA_HEAD']}>
                   <DepartmentDashboard />
                 </ProtectedRoute>
               }
@@ -203,17 +221,17 @@ export default function App() {
             <Route
               path="/department/assigned"
               element={
-                <ProtectedRoute allowedRoles={['SERVICE_DEPARTMENT', 'ADMIN', 'AREA_HEAD']}>
+                <ProtectedRoute allowedRoles={['EMPLOYEE', 'SERVICE_DEPARTMENT', 'ADMIN', 'AREA_HEAD']}>
                   <AssignedRequestsPage />
                 </ProtectedRoute>
               }
             />
 
-            {/* Traffic Officer Dedicated Routes */}
+            {/* Legacy Traffic Officer Dedicated Routes (Backward Compatibility) */}
             <Route
               path="/traffic-officer/dashboard"
               element={
-                <ProtectedRoute allowedRoles={['TRAFFIC_OFFICER', 'SERVICE_DEPARTMENT', 'ADMIN']}>
+                <ProtectedRoute allowedRoles={['EMPLOYEE', 'TRAFFIC_OFFICER', 'SERVICE_DEPARTMENT', 'ADMIN']}>
                   <TrafficOfficerDashboard />
                 </ProtectedRoute>
               }

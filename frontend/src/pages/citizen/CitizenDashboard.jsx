@@ -291,11 +291,36 @@ export default function CitizenDashboard() {
                       )}
                     </div>
                     <p className="text-xs font-bold text-slate-800 mt-1 truncate">{c.title}</p>
-                    <div className="flex items-center gap-2 text-[10px] text-slate-400 mt-0.5">
+                    <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[10px] text-slate-500 mt-1">
                       <span>{new Date(c.date).toLocaleDateString()}</span>
+                      {c.is_confirmed !== undefined && (
+                        <span className={`font-medium ${c.is_confirmed ? 'text-teal-700' : 'text-slate-400'}`}>
+                          • {c.is_confirmed ? '✓ Confirmed by Area Head' : '⏳ Pending Review'}
+                        </span>
+                      )}
+                      {c.expected_duration && (
+                        <span className="text-blue-700 font-medium">
+                          • Expected: {c.expected_duration}
+                        </span>
+                      )}
                       {c.deadline && (
                         <span className={c.is_overdue ? 'text-red-600 font-bold' : ''}>
-                          • Target: {new Date(c.deadline).toLocaleDateString()}
+                          • SLA: {new Date(c.deadline).toLocaleDateString()}
+                        </span>
+                      )}
+                      {c.status === 'Resolved' && c.actual_duration && (
+                        <span className="text-emerald-700 font-bold">
+                          • {c.actual_duration}
+                        </span>
+                      )}
+                      {c.status !== 'Resolved' && c.is_overdue && c.overdue_duration && (
+                        <span className="text-red-600 font-extrabold">
+                          • {c.overdue_duration}
+                        </span>
+                      )}
+                      {c.status !== 'Resolved' && !c.is_overdue && c.remaining_time && (
+                        <span className="text-emerald-600 font-medium">
+                          • {c.remaining_time}
                         </span>
                       )}
                     </div>

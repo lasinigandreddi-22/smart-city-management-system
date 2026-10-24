@@ -196,8 +196,11 @@ export default function AreaIssueQueuePage() {
             >
               <option value="">All Statuses</option>
               <option value="Submitted">Submitted (Unassigned)</option>
+              <option value="Under Review">Under Review</option>
+              <option value="Needs Clarification">Needs Clarification</option>
               <option value="Assigned">Assigned</option>
               <option value="In Progress">In Progress</option>
+              <option value="Pending Verification">Pending Verification</option>
               <option value="Resolved">Resolved</option>
               <option value="Closed">Closed</option>
             </select>

@@ -12,11 +12,13 @@ export default function LoginPage() {
   const navigate = useNavigate();
 
   const demoAccounts = [
-    { label: 'Citizen', username: 'citizen1', password: 'Citizen@12345', desc: 'Lodge complaints, check utilities & property tax' },
-    { label: 'Area Head', username: 'head1', password: 'Head@12345', desc: 'Manage area issues, prioritize & assign to staff' },
-    { label: 'City Admin', username: 'admin', password: 'Admin@12345', desc: 'Full city governance, review & assign complaints' },
-    { label: 'Dept Staff (Water)', username: 'department1', password: 'Dept@12345', desc: 'Process assigned work orders & repair requests' },
-    { label: 'Dept Staff (Traffic)', username: 'traffic1', password: 'Traffic@12345', desc: 'Roads & traffic department staff' },
+    { label: 'Citizen', username: 'citizen1', password: 'Citizen@12345', desc: 'Lodge complaints, track resolution & durations' },
+    { label: 'Area Head (North)', username: 'head1', password: 'Head@12345', desc: 'North Zone queue, triage & verify completions' },
+    { label: 'Area Head (South)', username: 'head2', password: 'Head@12345', desc: 'South Zone queue, triage & verify completions' },
+    { label: 'Employee (Water - North)', username: 'department1', password: 'Dept@12345', desc: 'North Water work orders & submit completions' },
+    { label: 'Employee (Traffic - North)', username: 'traffic1', password: 'Traffic@12345', desc: 'North Roads & Traffic tasks' },
+    { label: 'Employee (Water - South)', username: 'department2', password: 'Dept@12345', desc: 'South Water work orders & submit completions' },
+    { label: 'City Admin', username: 'admin', password: 'Admin@12345', desc: 'City governance & cross-zone oversight' },
   ];
 
   const handleDemoSelect = (acc) => {
@@ -42,10 +44,8 @@ export default function LoginPage() {
         navigate('/admin/dashboard');
       } else if (userRole === 'AREA_HEAD') {
         navigate('/area-head/dashboard');
-      } else if (userRole === 'SERVICE_DEPARTMENT') {
-        navigate('/department/dashboard');
-      } else if (userRole === 'TRAFFIC_OFFICER') {
-        navigate('/traffic-officer/dashboard');
+      } else if (userRole === 'EMPLOYEE' || userRole === 'SERVICE_DEPARTMENT' || userRole === 'TRAFFIC_OFFICER') {
+        navigate('/employee/dashboard');
       } else {
         navigate('/citizen/dashboard');
       }

@@ -251,7 +251,7 @@ class SmartCityAPITests(TestCase):
             'assigned_to': self.citizen2.id
         })
         self.assertEqual(invalid_assign.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn('only be assigned to Department Staff', invalid_assign.data['error'])
+        self.assertIn('only be assigned to Employee', invalid_assign.data['error'])
 
     def test_admin_user_role_management(self):
         self.client.force_authenticate(user=self.admin_user)
@@ -265,5 +265,159 @@ class SmartCityAPITests(TestCase):
         self.citizen2.refresh_from_db()
         self.assertEqual(self.citizen2.profile.role, UserRole.AREA_HEAD)
         self.assertEqual(self.citizen2.profile.assigned_zone, 'South Zone')
+
+    def test_employee_zone_isolation(self):
+        # Create Employee in North Zone
+        emp_north = User.objects.create_user(username='emp_north', password='password123', email='emp_n@test.com')
+        emp_north.profile.role = UserRole.EMPLOYEE
+        emp_north.profile.department_name = 'Water & Electricity Services'
+        emp_north.profile.assigned_zone = 'North Zone'
+        emp_north.profile.save()
+
+        # Create Employee in South Zone
+        emp_south = User.objects.create_user(username='emp_south', password='password123', email='emp_s@test.com')
+        emp_south.profile.role = UserRole.EMPLOYEE
+        emp_south.profile.department_name = 'Water & Electricity Services'
+        emp_south.profile.assigned_zone = 'South Zone'
+        emp_south.profile.save()
+
+        # Complaint in North Zone assigned to emp_north
+        c_north = Complaint.objects.create(
+            complaint_ref='CMP-NZ-001',
+            citizen=self.citizen1,
+            title='North Zone Pipe Leak',
+            category='Water Supply',
+            ward='North Zone',
+            location='North Block 1',
+            status=ComplaintStatus.ASSIGNED,
+            assigned_department='Water & Electricity Services',
+            assigned_to=emp_north
+        )
+
+        # Complaint in South Zone assigned to emp_south
+        c_south = Complaint.objects.create(
+            complaint_ref='CMP-SZ-001',
+            citizen=self.citizen2,
+            title='South Zone Valve Fault',
+            category='Water Supply',
+            ward='South Zone',
+            location='South Block 2',
+            status=ComplaintStatus.ASSIGNED,
+            assigned_department='Water & Electricity Services',
+            assigned_to=emp_south
+        )
+
+        # 1. emp_north can view their own North Zone task
+        self.client.force_authenticate(user=emp_north)
+        res_ok = self.client.get(f'/api/complaints/{c_north.id}/')
+        self.assertEqual(res_ok.status_code, status.HTTP_200_OK)
+
+        # 2. emp_north CANNOT view South Zone task (Forbidden 403)
+        res_forbidden = self.client.get(f'/api/complaints/{c_south.id}/')
+        self.assertEqual(res_forbidden.status_code, status.HTTP_403_FORBIDDEN)
+
+        # 3. emp_north task list only contains c_north, never c_south
+        list_res = self.client.get('/api/complaints/')
+        self.assertEqual(list_res.status_code, status.HTTP_200_OK)
+        refs = [c['complaint_ref'] for c in list_res.data]
+        self.assertIn('CMP-NZ-001', refs)
+        self.assertNotIn('CMP-SZ-001', refs)
+
+    def test_employee_cannot_bypass_area_head_acknowledgement(self):
+        emp = User.objects.create_user(username='emp_wf', password='password123', email='emp_wf@test.com')
+        emp.profile.role = UserRole.EMPLOYEE
+        emp.profile.department_name = 'Water & Electricity Services'
+        emp.profile.assigned_zone = 'North Zone'
+        emp.profile.save()
+
+        complaint = Complaint.objects.create(
+            complaint_ref='CMP-WF-001',
+            citizen=self.citizen1,
+            title='Main Line Work Order',
+            category='Water Supply',
+            ward='North Zone',
+            location='Sector 7',
+            status=ComplaintStatus.ASSIGNED,
+            assigned_department='Water & Electricity Services',
+            assigned_to=emp
+        )
+
+        self.client.force_authenticate(user=emp)
+
+        # Attempt to mark as Resolved directly -> MUST be rejected with 403 Forbidden
+        direct_resolve = self.client.patch(f'/api/complaints/{complaint.id}/', {
+            'status': 'Resolved',
+            'notes': 'Trying to resolve without Area Head review'
+        })
+        self.assertEqual(direct_resolve.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertIn('cannot directly mark complaints as Resolved', direct_resolve.data['error'])
+
+        # Submit completion to Area Head -> Sets status to Pending Verification
+        submit_comp = self.client.patch(f'/api/complaints/{complaint.id}/', {
+            'action': 'submit_completion',
+            'completion_remarks': 'Pipe replaced and sealed with pressure test verified.'
+        })
+        self.assertEqual(submit_comp.status_code, status.HTTP_200_OK)
+        complaint.refresh_from_db()
+        self.assertEqual(complaint.status, ComplaintStatus.PENDING_VERIFICATION)
+        self.assertEqual(complaint.completion_remarks, 'Pipe replaced and sealed with pressure test verified.')
+        self.assertIsNotNone(complaint.completion_submitted_at)
+
+    def test_area_head_acknowledge_and_return_workflow(self):
+        head = User.objects.create_user(username='head_wf', password='password123', email='head_wf@test.com')
+        head.profile.role = UserRole.AREA_HEAD
+        head.profile.assigned_zone = 'North Zone'
+        head.profile.save()
+
+        emp = User.objects.create_user(username='emp_wf2', password='password123', email='emp_wf2@test.com')
+        emp.profile.role = UserRole.EMPLOYEE
+        emp.profile.department_name = 'Water & Electricity Services'
+        emp.profile.assigned_zone = 'North Zone'
+        emp.profile.save()
+
+        complaint = Complaint.objects.create(
+            complaint_ref='CMP-WF-002',
+            citizen=self.citizen1,
+            title='Valve Replacement',
+            category='Water Supply',
+            ward='North Zone',
+            location='Sector 8',
+            status=ComplaintStatus.PENDING_VERIFICATION,
+            assigned_department='Water & Electricity Services',
+            assigned_to=emp,
+            completion_remarks='Replaced 2-inch gate valve.'
+        )
+
+        self.client.force_authenticate(user=head)
+
+        # 1. Area Head returns for further work with a reason
+        return_res = self.client.patch(f'/api/complaints/{complaint.id}/', {
+            'action': 'return',
+            'return_reason': 'Valve packaging requires additional pressure seal inspection.'
+        })
+        self.assertEqual(return_res.status_code, status.HTTP_200_OK)
+        complaint.refresh_from_db()
+        self.assertEqual(complaint.status, ComplaintStatus.IN_PROGRESS)
+        self.assertEqual(complaint.return_reason, 'Valve packaging requires additional pressure seal inspection.')
+
+        # 2. Employee resubmits completion
+        self.client.force_authenticate(user=emp)
+        self.client.patch(f'/api/complaints/{complaint.id}/', {
+            'action': 'submit_completion',
+            'completion_remarks': 'Secondary pressure test completed at 8 bar. All seals verified.'
+        })
+
+        # 3. Area Head acknowledges completion
+        self.client.force_authenticate(user=head)
+        ack_res = self.client.patch(f'/api/complaints/{complaint.id}/', {
+            'action': 'acknowledge'
+        })
+        self.assertEqual(ack_res.status_code, status.HTTP_200_OK)
+        complaint.refresh_from_db()
+        self.assertEqual(complaint.status, ComplaintStatus.RESOLVED)
+        self.assertEqual(complaint.acknowledged_by, head)
+        self.assertIsNotNone(complaint.acknowledged_at)
+        self.assertIsNotNone(complaint.resolved_at)
+        self.assertIsNotNone(complaint.actual_duration)
 
 

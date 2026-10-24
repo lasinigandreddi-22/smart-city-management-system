@@ -65,7 +65,7 @@ class Command(BaseCommand):
                 'email': 'dept.water@smartcity.gov.in',
                 'first_name': 'Vikram',
                 'last_name': 'Singh',
-                'role': UserRole.SERVICE_DEPARTMENT,
+                'role': UserRole.EMPLOYEE,
                 'is_staff': False,
                 'is_superuser': False,
                 'phone': '+91 98765 33333',
@@ -79,7 +79,7 @@ class Command(BaseCommand):
                 'email': 'traffic.officer1@smartcity.gov.in',
                 'first_name': 'Inspector',
                 'last_name': 'Rajesh Kumar',
-                'role': UserRole.SERVICE_DEPARTMENT,
+                'role': UserRole.EMPLOYEE,
                 'is_staff': False,
                 'is_superuser': False,
                 'phone': '+91 98765 44444',
@@ -100,6 +100,48 @@ class Command(BaseCommand):
                 'address': 'Ward 14 Zonal Office, North Sector',
                 'department_name': 'Municipal Governance',
                 'assigned_zone': 'North Zone'
+            },
+            {
+                'username': 'head2',
+                'password': 'Head@12345',
+                'email': 'head.south@smartcity.gov.in',
+                'first_name': 'Sunita',
+                'last_name': 'Rao',
+                'role': UserRole.AREA_HEAD,
+                'is_staff': False,
+                'is_superuser': False,
+                'phone': '+91 98765 88888',
+                'address': 'South Zonal Administrative Center',
+                'department_name': 'Municipal Governance',
+                'assigned_zone': 'South Zone'
+            },
+            {
+                'username': 'department2',
+                'password': 'Dept@12345',
+                'email': 'dept.south@smartcity.gov.in',
+                'first_name': 'Karan',
+                'last_name': 'Patel',
+                'role': UserRole.EMPLOYEE,
+                'is_staff': False,
+                'is_superuser': False,
+                'phone': '+91 98765 55555',
+                'address': 'South Utilities Workshop, Greenfield',
+                'department_name': 'Water & Electricity Services',
+                'assigned_zone': 'South Zone'
+            },
+            {
+                'username': 'traffic2',
+                'password': 'Traffic@12345',
+                'email': 'traffic.south@smartcity.gov.in',
+                'first_name': 'Officer',
+                'last_name': 'Suresh Nair',
+                'role': UserRole.EMPLOYEE,
+                'is_staff': False,
+                'is_superuser': False,
+                'phone': '+91 98765 66666',
+                'address': 'South Highway Patrol Station',
+                'department_name': 'Roads & Traffic Department',
+                'assigned_zone': 'South Zone'
             }
         ]
 
@@ -132,6 +174,9 @@ class Command(BaseCommand):
         dept_user = created_users['department1']
         traffic_user = created_users['traffic1']
         head_user = created_users['head1']
+        head2_user = created_users['head2']
+        dept2_user = created_users['department2']
+        traffic2_user = created_users['traffic2']
 
         # 2. Seed Water Notices
         water_notices_data = [
@@ -270,15 +315,20 @@ class Command(BaseCommand):
                 'priority': ComplaintPriority.HIGH,
                 'priority_reason': 'School bus route with multiple two-wheeler skidding incidents reported.',
                 'status': ComplaintStatus.IN_PROGRESS,
+                'is_confirmed': True,
+                'confirmed_by': head_user,
+                'confirmed_at': timezone.now() - timedelta(days=1),
                 'assigned_department': 'Roads & Traffic Department',
                 'assigned_to': traffic_user,
+                'assigned_by': head_user,
+                'assigned_at': timezone.now() - timedelta(days=1),
                 'deadline': timezone.now() + timedelta(days=2),
                 'description': 'Multiple deep potholes formed after heavy rainfall. Two two-wheelers skidded yesterday. Immediate asphalt repair requested.',
                 'resolution_details': '',
                 'supporters': [citizen1, citizen2],
                 'history': [
                     ('New', ComplaintStatus.SUBMITTED, 'Complaint registered online by citizen.', citizen1),
-                    (ComplaintStatus.SUBMITTED, ComplaintStatus.ASSIGNED, 'Assigned to Roads & Traffic repair crew.', admin_user),
+                    (ComplaintStatus.SUBMITTED, ComplaintStatus.ASSIGNED, 'Assigned to Roads & Traffic repair crew by Area Head.', head_user),
                     (ComplaintStatus.ASSIGNED, ComplaintStatus.IN_PROGRESS, 'Cold-mix asphalt patch material dispatched with repair crew.', traffic_user)
                 ]
             },
@@ -292,15 +342,20 @@ class Command(BaseCommand):
                 'priority': ComplaintPriority.URGENT,
                 'priority_reason': 'Contaminated drinking water affecting 40+ families; urgent health risk.',
                 'status': ComplaintStatus.ASSIGNED,
+                'is_confirmed': True,
+                'confirmed_by': head_user,
+                'confirmed_at': timezone.now() - timedelta(days=2),
                 'assigned_department': 'Water & Electricity Services',
                 'assigned_to': dept_user,
+                'assigned_by': head_user,
+                'assigned_at': timezone.now() - timedelta(days=2),
                 'deadline': timezone.now() - timedelta(days=1),  # Overdue
                 'description': 'Tap water running turbid brown with high sedimentation since morning supply cycle. Inhabitable for drinking.',
                 'resolution_details': '',
                 'supporters': [citizen1, citizen2],
                 'history': [
                     ('New', ComplaintStatus.SUBMITTED, 'Complaint submitted by citizen.', citizen1),
-                    (ComplaintStatus.SUBMITTED, ComplaintStatus.ASSIGNED, 'Forwarded urgently to Water Quality Testing Division.', admin_user)
+                    (ComplaintStatus.SUBMITTED, ComplaintStatus.ASSIGNED, 'Forwarded urgently to Water Quality Testing Division.', head_user)
                 ]
             },
             {
@@ -313,16 +368,26 @@ class Command(BaseCommand):
                 'priority': ComplaintPriority.MEDIUM,
                 'priority_reason': 'General sanitation overflow.',
                 'status': ComplaintStatus.RESOLVED,
+                'is_confirmed': True,
+                'confirmed_by': head_user,
+                'confirmed_at': timezone.now() - timedelta(days=3),
                 'assigned_department': 'Water & Electricity Services',
-                'assigned_to': None,
+                'assigned_to': dept_user,
+                'assigned_by': head_user,
+                'assigned_at': timezone.now() - timedelta(days=3),
+                'acknowledged_by': head_user,
+                'acknowledged_at': timezone.now() - timedelta(days=1),
+                'resolved_at': timezone.now() - timedelta(days=1),
                 'deadline': timezone.now() - timedelta(days=2),
                 'description': 'Community waste bin has not been cleared for 3 consecutive days. Stray animals scattering garbage.',
                 'resolution_details': 'Special waste disposal truck deployed. Waste cleared and area sanitized with disinfectant powder.',
+                'completion_remarks': 'Waste fully cleared and sanitized.',
                 'supporters': [citizen1],
                 'history': [
                     ('New', ComplaintStatus.SUBMITTED, 'Logged by citizen.', citizen1),
-                    (ComplaintStatus.SUBMITTED, ComplaintStatus.IN_PROGRESS, 'Sanitation truck routed.', admin_user),
-                    (ComplaintStatus.IN_PROGRESS, ComplaintStatus.RESOLVED, 'Waste cleared and sanitized.', dept_user)
+                    (ComplaintStatus.SUBMITTED, ComplaintStatus.ASSIGNED, 'Sanitation crew dispatched.', head_user),
+                    (ComplaintStatus.ASSIGNED, ComplaintStatus.PENDING_VERIFICATION, 'Waste cleared by crew; submitted for Area Head review.', dept_user),
+                    (ComplaintStatus.PENDING_VERIFICATION, ComplaintStatus.RESOLVED, 'Resolution verified and acknowledged by Area Head.', head_user)
                 ]
             },
             {
@@ -335,6 +400,7 @@ class Command(BaseCommand):
                 'priority': ComplaintPriority.MEDIUM,
                 'priority_reason': 'Drainage backup risk if unseasonal rains occur.',
                 'status': ComplaintStatus.SUBMITTED,
+                'is_confirmed': False,
                 'assigned_department': '',
                 'assigned_to': None,
                 'deadline': timezone.now() + timedelta(days=4),
@@ -342,7 +408,7 @@ class Command(BaseCommand):
                 'resolution_details': '',
                 'supporters': [citizen2],
                 'history': [
-                    ('New', ComplaintStatus.SUBMITTED, 'Submitted via citizen portal.', citizen2)
+                    ('New', ComplaintStatus.SUBMITTED, 'Submitted via citizen portal. Awaiting South Zone Area Head review.', citizen2)
                 ]
             },
             {
@@ -354,15 +420,19 @@ class Command(BaseCommand):
                 'ward': 'North Zone',
                 'priority': ComplaintPriority.HIGH,
                 'priority_reason': 'Dark stretch of high-speed corridor creating critical pedestrian accident risk.',
-                'status': ComplaintStatus.SUBMITTED,
-                'assigned_department': '',
+                'status': ComplaintStatus.UNDER_REVIEW,
+                'is_confirmed': True,
+                'confirmed_by': head_user,
+                'confirmed_at': timezone.now() - timedelta(hours=4),
+                'assigned_department': 'Water & Electricity Services',
                 'assigned_to': None,
                 'deadline': timezone.now() + timedelta(days=1),
                 'description': 'Six consecutive LED poles are completely dark creating a severe blind spot at the pedestrian crossing.',
                 'resolution_details': '',
                 'supporters': [citizen1, citizen2],
                 'history': [
-                    ('New', ComplaintStatus.SUBMITTED, 'Reported by local neighborhood association.', citizen1)
+                    ('New', ComplaintStatus.SUBMITTED, 'Reported by local neighborhood association.', citizen1),
+                    (ComplaintStatus.SUBMITTED, ComplaintStatus.UNDER_REVIEW, 'Confirmed valid by Area Head; pending crew allocation.', head_user)
                 ]
             },
             {
@@ -374,17 +444,26 @@ class Command(BaseCommand):
                 'ward': 'North Zone',
                 'priority': ComplaintPriority.URGENT,
                 'priority_reason': 'Pressurized potable water main ruptured; washing out road foundation.',
-                'status': ComplaintStatus.IN_PROGRESS,
+                'status': ComplaintStatus.PENDING_VERIFICATION,
+                'is_confirmed': True,
+                'confirmed_by': head_user,
+                'confirmed_at': timezone.now() - timedelta(days=1),
                 'assigned_department': 'Water & Electricity Services',
                 'assigned_to': dept_user,
+                'assigned_by': head_user,
+                'assigned_at': timezone.now() - timedelta(days=1),
+                'completion_remarks': 'Excavated ruptured 400mm cast iron main. Replaced 3-meter section with ductile iron pipe and new mechanical sleeve. Pressure test passed at 6.5 bar. Sidewalk backfilled.',
+                'completion_submitted_at': timezone.now() - timedelta(hours=2),
+                'completion_submitted_by': dept_user,
                 'deadline': timezone.now() + timedelta(hours=10),
                 'description': 'Potable water pipe burst flooding road and causing soil subsidence under the pedestrian footpath.',
-                'resolution_details': '',
+                'resolution_details': 'Pipeline repaired and pressure tested.',
                 'supporters': [citizen1, citizen2],
                 'history': [
                     ('New', ComplaintStatus.SUBMITTED, 'Submitted via citizen app.', citizen1),
                     (ComplaintStatus.SUBMITTED, ComplaintStatus.ASSIGNED, 'Escalated by Area Head to Water Dept.', head_user),
-                    (ComplaintStatus.ASSIGNED, ComplaintStatus.IN_PROGRESS, 'Excavator and isolation team deployed.', dept_user)
+                    (ComplaintStatus.ASSIGNED, ComplaintStatus.IN_PROGRESS, 'Excavator and isolation team deployed.', dept_user),
+                    (ComplaintStatus.IN_PROGRESS, ComplaintStatus.PENDING_VERIFICATION, 'Repair completed by field crew; submitted to Area Head for acknowledgement.', dept_user)
                 ]
             },
             {
@@ -397,6 +476,7 @@ class Command(BaseCommand):
                 'priority': ComplaintPriority.URGENT,
                 'priority_reason': 'Direct obstruction to life-saving ambulance entry corridor.',
                 'status': ComplaintStatus.SUBMITTED,
+                'is_confirmed': False,
                 'assigned_department': 'Roads & Traffic Department',
                 'assigned_to': None,
                 'deadline': timezone.now() + timedelta(hours=6),
@@ -417,8 +497,13 @@ class Command(BaseCommand):
                 'priority': ComplaintPriority.URGENT,
                 'priority_reason': 'Immediate fall hazard for young children walking to school.',
                 'status': ComplaintStatus.ASSIGNED,
+                'is_confirmed': True,
+                'confirmed_by': head_user,
+                'confirmed_at': timezone.now() - timedelta(days=2),
                 'assigned_department': 'Water & Electricity Services',
                 'assigned_to': dept_user,
+                'assigned_by': head_user,
+                'assigned_at': timezone.now() - timedelta(days=2),
                 'deadline': timezone.now() - timedelta(days=2),  # Overdue
                 'description': 'Heavy iron manhole cover cracked and removed by scrap scavengers, exposing 10ft deep septic shaft.',
                 'resolution_details': '',
@@ -426,6 +511,59 @@ class Command(BaseCommand):
                 'history': [
                     ('New', ComplaintStatus.SUBMITTED, 'Reported by parents committee.', citizen1),
                     (ComplaintStatus.SUBMITTED, ComplaintStatus.ASSIGNED, 'Emergency barricade requested.', head_user)
+                ]
+            },
+            {
+                'ref': 'CMP-2026-S101',
+                'citizen': citizen2,
+                'title': 'Low Water Pressure and Valve Leak in South Sector 2',
+                'category': ComplaintCategory.WATER_SUPPLY,
+                'location': 'Greenfield Colony Block B',
+                'ward': 'South Zone',
+                'priority': ComplaintPriority.MEDIUM,
+                'priority_reason': 'Sustained low pressure during peak morning hours.',
+                'status': ComplaintStatus.ASSIGNED,
+                'is_confirmed': True,
+                'confirmed_by': head2_user,
+                'confirmed_at': timezone.now() - timedelta(days=1),
+                'assigned_department': 'Water & Electricity Services',
+                'assigned_to': dept2_user,
+                'assigned_by': head2_user,
+                'assigned_at': timezone.now() - timedelta(days=1),
+                'deadline': timezone.now() + timedelta(days=3),
+                'description': 'Underground distribution valve has persistent leak resulting in inadequate pressure to high-rise overhead tanks.',
+                'resolution_details': '',
+                'supporters': [citizen2],
+                'history': [
+                    ('New', ComplaintStatus.SUBMITTED, 'Submitted by resident.', citizen2),
+                    (ComplaintStatus.SUBMITTED, ComplaintStatus.ASSIGNED, 'Assigned by South Area Head to South Water crew.', head2_user)
+                ]
+            },
+            {
+                'ref': 'CMP-2026-S202',
+                'citizen': citizen2,
+                'title': 'Fallen Tree Branch Obstructing South Expressway Exit',
+                'category': ComplaintCategory.ROADS_TRAFFIC,
+                'location': 'South Expressway Exit Ramp 3',
+                'ward': 'South Zone',
+                'priority': ComplaintPriority.HIGH,
+                'priority_reason': 'Single lane blocked creating 2km morning traffic tailback.',
+                'status': ComplaintStatus.IN_PROGRESS,
+                'is_confirmed': True,
+                'confirmed_by': head2_user,
+                'confirmed_at': timezone.now() - timedelta(hours=5),
+                'assigned_department': 'Roads & Traffic Department',
+                'assigned_to': traffic2_user,
+                'assigned_by': head2_user,
+                'assigned_at': timezone.now() - timedelta(hours=5),
+                'deadline': timezone.now() + timedelta(hours=8),
+                'description': 'Heavy storm caused large eucalyptus branch to snap and block outer lane of expressway ramp.',
+                'resolution_details': '',
+                'supporters': [citizen2],
+                'history': [
+                    ('New', ComplaintStatus.SUBMITTED, 'Reported via highway hotline.', citizen2),
+                    (ComplaintStatus.SUBMITTED, ComplaintStatus.ASSIGNED, 'Forwarded by South Area Head to traffic road crew.', head2_user),
+                    (ComplaintStatus.ASSIGNED, ComplaintStatus.IN_PROGRESS, 'Chainsaw and tow truck arriving at site.', traffic2_user)
                 ]
             }
         ]
@@ -442,9 +580,21 @@ class Command(BaseCommand):
                     'priority': cdata['priority'],
                     'priority_reason': cdata.get('priority_reason', ''),
                     'status': cdata['status'],
+                    'is_confirmed': cdata.get('is_confirmed', False),
+                    'confirmed_by': cdata.get('confirmed_by'),
+                    'confirmed_at': cdata.get('confirmed_at'),
                     'assigned_department': cdata['assigned_department'],
                     'assigned_to': cdata['assigned_to'],
+                    'assigned_by': cdata.get('assigned_by'),
+                    'assigned_at': cdata.get('assigned_at'),
                     'deadline': cdata.get('deadline'),
+                    'completion_remarks': cdata.get('completion_remarks', ''),
+                    'completion_submitted_at': cdata.get('completion_submitted_at'),
+                    'completion_submitted_by': cdata.get('completion_submitted_by'),
+                    'acknowledged_by': cdata.get('acknowledged_by'),
+                    'acknowledged_at': cdata.get('acknowledged_at'),
+                    'resolved_at': cdata.get('resolved_at'),
+                    'return_reason': cdata.get('return_reason', ''),
                     'description': cdata['description'],
                     'resolution_details': cdata['resolution_details']
                 }

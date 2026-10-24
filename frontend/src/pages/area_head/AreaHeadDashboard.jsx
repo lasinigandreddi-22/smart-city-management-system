@@ -78,6 +78,46 @@ export default function AreaHeadDashboard() {
     }
   };
 
+  const handleAcknowledgeQuick = async (issueId, defaultRemarks) => {
+    const details = prompt('Enter resolution summary (optional):', defaultRemarks || '');
+    try {
+      await api.complaints.update(issueId, {
+        action: 'acknowledge',
+        resolution_details: details || defaultRemarks || 'Resolution verified and acknowledged by Area Head.'
+      });
+      fetchDashboardData();
+    } catch (err) {
+      alert(err.message || 'Failed to acknowledge issue.');
+    }
+  };
+
+  const handleReturnQuick = async (issueId) => {
+    const reason = prompt('Please enter return reason explaining required rework:');
+    if (!reason) return;
+    try {
+      await api.complaints.update(issueId, {
+        action: 'return',
+        return_reason: reason,
+        notes: `Returned by Area Head: ${reason}`
+      });
+      fetchDashboardData();
+    } catch (err) {
+      alert(err.message || 'Failed to return issue.');
+    }
+  };
+
+  const handleConfirmQuick = async (issueId) => {
+    try {
+      await api.complaints.update(issueId, {
+        action: 'confirm',
+        notes: `Complaint verified and confirmed by Area Head ${user?.name || user?.username}.`
+      });
+      fetchDashboardData();
+    } catch (err) {
+      alert(err.message || 'Failed to confirm issue.');
+    }
+  };
+
   if (loading && !data) {
     return (
       <div className="min-h-96 flex items-center justify-center">
@@ -89,6 +129,7 @@ export default function AreaHeadDashboard() {
   const summary = data?.summary || {};
   const mostlyComplained = data?.mostly_complained || [];
   const unassignedQueue = data?.unassigned_queue || [];
+  const pendingAcknowledgements = data?.pending_acknowledgements || [];
   const staffList = data?.available_staff || [];
 
   return (
@@ -164,6 +205,73 @@ export default function AreaHeadDashboard() {
           <span className="text-[10px] text-emerald-700">Completed & verified</span>
         </div>
       </div>
+
+      {/* KEY WORKFLOW REQUIREMENT: FIELD COMPLETIONS AWAITING AREA HEAD ACKNOWLEDGEMENT */}
+      {pendingAcknowledgements.length > 0 && (
+        <div className="bg-purple-900/10 border-2 border-purple-300 rounded-2xl shadow-xs p-5 space-y-4">
+          <div className="flex items-center justify-between border-b border-purple-200/80 pb-3">
+            <div className="flex items-center gap-2">
+              <CheckCircle2 className="w-5 h-5 text-purple-700" />
+              <div>
+                <h2 className="text-sm font-bold text-purple-950">
+                  Field Completions Awaiting Verification ({pendingAcknowledgements.length})
+                </h2>
+                <p className="text-xs text-purple-800">
+                  Department employees have finished work and submitted completion remarks. Verify and acknowledge resolution or return with feedback.
+                </p>
+              </div>
+            </div>
+            <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-purple-200 text-purple-900">
+              Action Required
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {pendingAcknowledgements.map((item) => (
+              <div key={item.id} className="bg-white p-4 rounded-xl border border-purple-200 shadow-xs flex flex-col justify-between space-y-3">
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <span className="font-mono text-xs font-bold text-purple-700">{item.ref}</span>
+                    <span className="text-[10px] font-semibold bg-indigo-50 text-indigo-700 px-1.5 py-0.2 rounded border border-indigo-200">
+                      {item.ward} • {item.category}
+                    </span>
+                  </div>
+                  <h3 className="text-xs font-bold text-slate-900">{item.title}</h3>
+                  <div className="p-2.5 bg-slate-50 rounded-lg border border-slate-100 text-xs text-slate-700 space-y-0.5">
+                    <p className="text-[10px] text-slate-400 uppercase font-semibold">Submitted by {item.completion_submitted_by || item.assigned_to_name}</p>
+                    <p className="italic font-medium text-slate-800">"{item.completion_remarks || 'Work completed'}"</p>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between pt-2 border-t border-slate-100 text-xs">
+                  <Link
+                    to={`/complaints/${item.id}`}
+                    className="text-slate-500 hover:text-slate-800 font-semibold text-[11px]"
+                  >
+                    View Details
+                  </Link>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => handleReturnQuick(item.id)}
+                      className="px-2.5 py-1 text-xs font-semibold text-amber-800 bg-amber-50 hover:bg-amber-100 rounded-lg transition-colors"
+                    >
+                      Return
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleAcknowledgeQuick(item.id, item.completion_remarks)}
+                      className="px-3 py-1 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg shadow-xs transition-colors"
+                    >
+                      ✓ Acknowledge
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* KEY REQUIREMENT: TOP 5-6 MOSTLY COMPLAINED / SUPPORTED ISSUES */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">

@@ -150,8 +150,11 @@ export default function ComplaintListPage() {
           >
             <option value="">All Statuses</option>
             <option value="Submitted">Submitted</option>
+            <option value="Under Review">Under Review</option>
+            <option value="Needs Clarification">Needs Clarification</option>
             <option value="Assigned">Assigned</option>
             <option value="In Progress">In Progress</option>
+            <option value="Pending Verification">Pending Verification</option>
             <option value="Resolved">Resolved</option>
             <option value="Closed">Closed</option>
           </select>
@@ -256,12 +259,23 @@ export default function ComplaintListPage() {
                         <StatusBadge status={c.status} />
                       </td>
                       <td className="py-3.5 px-4">
-                        {c.deadline ? (
+                        {c.status === 'Resolved' && c.actual_duration ? (
+                          <div className="space-y-0.5">
+                            <span className="text-[11px] font-bold text-emerald-700 flex items-center gap-1">
+                              <Clock className="w-3 h-3" />
+                              {c.actual_duration}
+                            </span>
+                            <span className="text-[10px] text-slate-400">Resolved</span>
+                          </div>
+                        ) : c.deadline ? (
                           <div className="space-y-0.5">
                             <span className={`text-[11px] font-medium flex items-center gap-1 ${isOverdue ? 'text-red-600 font-bold' : 'text-slate-500'}`}>
                               <Clock className="w-3 h-3" />
                               {new Date(c.deadline).toLocaleDateString()}
                             </span>
+                            {c.expected_duration && (
+                              <p className="text-[10px] text-blue-600 font-medium">{c.expected_duration}</p>
+                            )}
                             {isOverdue && (
                               <span className="inline-block px-1.5 py-0.2 rounded text-[9px] font-extrabold bg-red-600 text-white uppercase">
                                 Overdue
@@ -269,7 +283,7 @@ export default function ComplaintListPage() {
                             )}
                           </div>
                         ) : (
-                          <span className="text-slate-400 text-[11px]">No deadline</span>
+                          <span className="text-slate-400 text-[11px]">{c.expected_duration || 'No deadline'}</span>
                         )}
                       </td>
                       <td className="py-3.5 px-4 text-right text-blue-600 font-semibold">

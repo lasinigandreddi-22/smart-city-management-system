@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
-import { Bell, Menu } from 'lucide-react';
+import { Bell, Menu, LogOut } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import NotificationDrawer from './NotificationDrawer';
 import ProfileMenu from './ProfileMenu';
 
 export default function Navbar({ onMobileMenuToggle }) {
-  const { unreadCount } = useAuth();
+  const { unreadCount, logout } = useAuth();
   const [showNotifications, setShowNotifications] = useState(false);
 
   return (
@@ -56,6 +56,17 @@ export default function Navbar({ onMobileMenuToggle }) {
 
         {/* User Name/Avatar with Accessible Profile Dropdown Menu */}
         <ProfileMenu />
+
+        {/* Dedicated Logout / Sign Out control at the top-right corner as the last action */}
+        <button
+          onClick={logout}
+          className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-rose-600 hover:text-rose-700 hover:bg-rose-50 border border-rose-200 transition-colors cursor-pointer shadow-2xs"
+          title="Sign Out"
+          aria-label="Sign Out"
+        >
+          <LogOut className="w-4 h-4 shrink-0" />
+          <span className="hidden sm:inline">Logout</span>
+        </button>
       </div>
     </header>
   );

@@ -166,14 +166,14 @@ class StaffListAPIView(views.APIView):
 
     def get(self, request):
         role = getattr(request.user.profile, 'role', None)
-        if role not in [UserRole.ADMIN, UserRole.AREA_HEAD, UserRole.SERVICE_DEPARTMENT, UserRole.TRAFFIC_OFFICER] and not request.user.is_staff:
+        if role not in [UserRole.ADMIN, UserRole.AREA_HEAD, UserRole.EMPLOYEE, UserRole.SERVICE_DEPARTMENT, UserRole.TRAFFIC_OFFICER] and not request.user.is_staff:
             return Response({'error': 'Permission denied.'}, status=status.HTTP_403_FORBIDDEN)
 
         department = request.query_params.get('department')
         ward = request.query_params.get('ward') or request.query_params.get('zone')
 
         staff_users = User.objects.filter(
-            profile__role__in=[UserRole.SERVICE_DEPARTMENT, UserRole.TRAFFIC_OFFICER]
+            profile__role__in=[UserRole.EMPLOYEE, UserRole.SERVICE_DEPARTMENT, UserRole.TRAFFIC_OFFICER]
         ).select_related('profile').order_by('first_name', 'username')
 
         if department:

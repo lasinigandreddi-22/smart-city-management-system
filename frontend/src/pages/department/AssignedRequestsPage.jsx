@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { 
   ClipboardList, Search, CheckCircle2, Clock, Wrench, 
   AlertTriangle, ArrowRight, ThumbsUp, MapPin, Building,
-  ArrowUpDown
+  ArrowUpDown, RotateCcw
 } from 'lucide-react';
 import api from '../../services/api';
 import Modal from '../../components/Modal';
@@ -20,12 +20,16 @@ export default function AssignedRequestsPage() {
   const [search, setSearch] = useState('');
   const navigate = useNavigate();
 
-  // Resolution modal state
+  // Progress update modal
   const [activeComplaint, setActiveComplaint] = useState(null);
-  const [newStatus, setNewStatus] = useState('In Progress');
-  const [notes, setNotes] = useState('');
-  const [resolutionDetails, setResolutionDetails] = useState('');
-  const [saving, setSaving] = useState(false);
+  const [workNotes, setWorkNotes] = useState('');
+  const [savingProgress, setSavingProgress] = useState(false);
+
+  // Completion modal
+  const [completionComplaint, setCompletionComplaint] = useState(null);
+  const [completionRemarks, setCompletionRemarks] = useState('');
+  const [completionNotes, setCompletionNotes] = useState('');
+  const [savingCompletion, setSavingCompletion] = useState(false);
 
   const loadAssigned = async () => {
     setLoading(true);
@@ -56,31 +60,55 @@ export default function AssignedRequestsPage() {
     loadAssigned();
   };
 
-  const openActionModal = (c, defaultSt) => {
+  const openProgressModal = (c) => {
     setActiveComplaint(c);
-    setNewStatus(defaultSt || c.status);
-    setNotes('');
-    setResolutionDetails(c.resolution_details || '');
+    setWorkNotes('');
   };
 
-  const handleSaveAction = async (e) => {
+  const openCompletionModal = (c) => {
+    setCompletionComplaint(c);
+    setCompletionRemarks('');
+    setCompletionNotes('');
+  };
+
+  const handleSaveProgress = async (e) => {
     e.preventDefault();
-    setSaving(true);
+    if (!activeComplaint) return;
+    setSavingProgress(true);
     try {
-      const payload = {
-        status: newStatus,
-        notes: notes || `Status updated to ${newStatus} by field team.`,
-      };
-      if (newStatus === 'Resolved') {
-        payload.resolution_details = resolutionDetails;
-      }
-      await api.complaints.update(activeComplaint.id, payload);
+      await api.complaints.update(activeComplaint.id, {
+        status: 'In Progress',
+        notes: workNotes || 'Progress update logged by assigned field staff.'
+      });
       setActiveComplaint(null);
       loadAssigned();
     } catch (err) {
-      alert('Error updating request: ' + err.message);
+      alert('Error updating progress: ' + err.message);
     } finally {
-      setSaving(false);
+      setSavingProgress(false);
+    }
+  };
+
+  const handleSaveCompletion = async (e) => {
+    e.preventDefault();
+    if (!completionComplaint) return;
+    if (!completionRemarks.trim()) {
+      alert('Please enter completion remarks detailing the resolution.');
+      return;
+    }
+    setSavingCompletion(true);
+    try {
+      await api.complaints.update(completionComplaint.id, {
+        action: 'submit_completion',
+        completion_remarks: completionRemarks,
+        notes: completionNotes || 'Field work completed; submitted for Area Head verification.'
+      });
+      setCompletionComplaint(null);
+      loadAssigned();
+    } catch (err) {
+      alert('Error submitting completion: ' + err.message);
+    } finally {
+      setSavingCompletion(false);
     }
   };
 
@@ -93,15 +121,15 @@ export default function AssignedRequestsPage() {
             <ClipboardList className="w-6 h-6" />
           </div>
           <div>
-            <h1 className="text-xl font-bold text-slate-900">Staff Work Queue & Field Tasks</h1>
+            <h1 className="text-xl font-bold text-slate-900">Employee Work Queue & Field Tasks</h1>
             <p className="text-xs text-slate-500">
-              Assigned department tasks, deadline tracking, work remarks, and resolution verification
+              Assigned department tasks, SLA deadlines, work remarks, and Area Head verification submissions
             </p>
           </div>
         </div>
 
         <span className="text-xs font-semibold px-3 py-1 bg-purple-50 text-purple-700 border border-purple-200 rounded-xl">
-          {complaints.length} Work Orders
+          {complaints.length} Assigned Orders
         </span>
       </div>
 
@@ -135,11 +163,11 @@ export default function AssignedRequestsPage() {
               className="w-full p-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-700"
             >
               <option value="">All Statuses</option>
-              <option value="Submitted">Submitted (New)</option>
-              <option value="Assigned">Assigned</option>
+              <option value="Assigned">Assigned (Queue)</option>
               <option value="In Progress">In Progress</option>
+              <option value="Pending Verification">Pending Verification</option>
               <option value="Resolved">Resolved</option>
-              <option value="Closed">Closed</option>
+              <option value="Needs Clarification">Needs Clarification</option>
             </select>
           </div>
 
@@ -222,9 +250,8 @@ export default function AssignedRequestsPage() {
                 <tr>
                   <th className="py-3.5 px-4">Ref #</th>
                   <th className="py-3.5 px-4">Issue & Ward</th>
-                  <th className="py-3.5 px-4">Priority & Reason</th>
-                  <th className="py-3.5 px-4">Community Support</th>
-                  <th className="py-3.5 px-4">Target Deadline</th>
+                  <th className="py-3.5 px-4">Priority & SLA</th>
+                  <th className="py-3.5 px-4">Duration Tracking</th>
                   <th className="py-3.5 px-4">Status</th>
                   <th className="py-3.5 px-4 text-right">Field Actions</th>
                 </tr>
@@ -244,6 +271,11 @@ export default function AssignedRequestsPage() {
                           <span>•</span>
                           <span className="truncate">{c.location}</span>
                         </div>
+                        {c.return_reason && (
+                          <p className="text-[10px] text-amber-800 font-bold bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200 mt-1 truncate">
+                            ↩ Returned by Area Head: {c.return_reason}
+                          </p>
+                        )}
                       </td>
                       <td className="py-3.5 px-4 max-w-xs">
                         <PriorityBadge priority={c.priority} />
@@ -252,50 +284,51 @@ export default function AssignedRequestsPage() {
                             {c.priority_reason}
                           </p>
                         )}
-                      </td>
-                      <td className="py-3.5 px-4">
-                        <span className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-900 bg-amber-100 px-2.5 py-0.5 rounded-full border border-amber-300">
-                          <ThumbsUp className="w-3 h-3 text-amber-600 fill-amber-500" />
-                          <span>{c.support_count || 0} Affected</span>
-                        </span>
-                      </td>
-                      <td className="py-3.5 px-4">
-                        {c.deadline ? (
-                          <div className="space-y-0.5">
-                            <span className={`text-[11px] font-semibold flex items-center gap-1 ${isOverdue ? 'text-red-600 font-bold' : 'text-slate-600'}`}>
-                              <Clock className="w-3 h-3" />
-                              {new Date(c.deadline).toLocaleDateString()} {new Date(c.deadline).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                            </span>
-                            {isOverdue && (
-                              <span className="inline-block px-1.5 py-0.2 rounded text-[9px] font-extrabold bg-red-600 text-white uppercase animate-pulse">
-                                Overdue
-                              </span>
-                            )}
-                          </div>
-                        ) : (
-                          <span className="text-slate-400 text-[11px]">No deadline</span>
+                        {c.deadline && (
+                          <p className={`text-[10px] mt-1 ${isOverdue ? 'text-red-600 font-bold' : 'text-slate-500'}`}>
+                            {isOverdue ? '⚠️ Overdue SLA: ' : 'Target: '}
+                            {new Date(c.deadline).toLocaleDateString()}
+                          </p>
                         )}
+                      </td>
+                      <td className="py-3.5 px-4">
+                        <div className="space-y-0.5 text-[11px]">
+                          {c.expected_duration && (
+                            <p className="text-blue-700 font-medium">SLA: {c.expected_duration}</p>
+                          )}
+                          {c.status === 'Resolved' ? (
+                            <p className="text-emerald-700 font-bold">{c.actual_duration || 'Resolved'}</p>
+                          ) : isOverdue ? (
+                            <p className="text-red-600 font-extrabold">{c.overdue_duration || 'Overdue'}</p>
+                          ) : (
+                            <p className="text-emerald-600 font-medium">{c.remaining_time || 'On schedule'}</p>
+                          )}
+                        </div>
                       </td>
                       <td className="py-3.5 px-4">
                         <StatusBadge status={c.status} />
                       </td>
                       <td className="py-3.5 px-4 text-right space-x-1.5 whitespace-nowrap">
-                        {c.status !== 'In Progress' && c.status !== 'Resolved' && (
-                          <button
-                            onClick={() => openActionModal(c, 'In Progress')}
-                            className="px-2.5 py-1 text-xs font-semibold text-blue-700 bg-blue-50 rounded-lg hover:bg-blue-100"
-                          >
-                            Start Work
-                          </button>
-                        )}
-                        {c.status !== 'Resolved' && (
-                          <button
-                            onClick={() => openActionModal(c, 'Resolved')}
-                            className="px-2.5 py-1 text-xs font-semibold text-emerald-700 bg-emerald-50 rounded-lg hover:bg-emerald-100"
-                          >
-                            Resolve Job
-                          </button>
-                        )}
+                        {c.status === 'Pending Verification' ? (
+                          <span className="px-2 py-1 text-[11px] font-semibold text-purple-700 bg-purple-50 rounded-lg border border-purple-200">
+                            Awaiting Area Head
+                          </span>
+                        ) : c.status !== 'Resolved' && c.status !== 'Closed' ? (
+                          <>
+                            <button
+                              onClick={() => openProgressModal(c)}
+                              className="px-2.5 py-1 text-xs font-semibold text-blue-700 bg-blue-50 rounded-lg hover:bg-blue-100"
+                            >
+                              Log Notes
+                            </button>
+                            <button
+                              onClick={() => openCompletionModal(c)}
+                              className="px-2.5 py-1 text-xs font-bold text-emerald-700 bg-emerald-50 rounded-lg hover:bg-emerald-100"
+                            >
+                              Submit Done
+                            </button>
+                          </>
+                        ) : null}
                         <button
                           onClick={() => navigate(`/complaints/${c.id}`)}
                           className="px-2 py-1 text-xs font-medium text-slate-500 hover:text-slate-800"
@@ -312,60 +345,30 @@ export default function AssignedRequestsPage() {
         )}
       </div>
 
-      {/* Field Action Modal */}
+      {/* Progress Log Modal */}
       {activeComplaint && (
         <Modal
           isOpen={!!activeComplaint}
           onClose={() => setActiveComplaint(null)}
-          title={`Update Work Order #${activeComplaint.complaint_ref}`}
+          title={`Update Progress Log (#${activeComplaint.complaint_ref})`}
         >
-          <form onSubmit={handleSaveAction} className="space-y-4 text-xs">
+          <form onSubmit={handleSaveProgress} className="space-y-4 text-xs">
             <div className="p-3 bg-slate-50 rounded-xl space-y-1">
               <p className="font-bold text-slate-800">{activeComplaint.title}</p>
               <p className="text-[11px] text-slate-500">{activeComplaint.location} • Ward: {activeComplaint.ward || 'General'}</p>
-              {activeComplaint.priority_reason && (
-                <p className="text-[10px] text-amber-800 font-medium">Reason: {activeComplaint.priority_reason}</p>
-              )}
             </div>
 
             <div>
-              <label className="block font-semibold text-slate-700 mb-1">Update Status</label>
-              <select
-                value={newStatus}
-                onChange={(e) => setNewStatus(e.target.value)}
-                className="w-full p-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 bg-white"
-              >
-                <option value="Assigned">Assigned (Queue)</option>
-                <option value="In Progress">In Progress (Field Work Started)</option>
-                <option value="Resolved">Resolved (Work Completed)</option>
-                <option value="Closed">Closed</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block font-semibold text-slate-700 mb-1">Field Notes / Diagnostics</label>
+              <label className="block font-semibold text-slate-700 mb-1">Field Work Remarks / Updates</label>
               <textarea
                 rows={3}
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
+                value={workNotes}
+                onChange={(e) => setWorkNotes(e.target.value)}
                 placeholder="Log actions taken on site, parts used, or crew notes..."
                 className="w-full p-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 bg-white"
+                required
               />
             </div>
-
-            {newStatus === 'Resolved' && (
-              <div>
-                <label className="block font-semibold text-slate-700 mb-1">Resolution Summary</label>
-                <textarea
-                  rows={2}
-                  value={resolutionDetails}
-                  onChange={(e) => setResolutionDetails(e.target.value)}
-                  placeholder="Explain how the issue was fixed for the citizen and area head..."
-                  className="w-full p-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 bg-emerald-50/50"
-                  required
-                />
-              </div>
-            )}
 
             <div className="flex justify-end gap-2 pt-2">
               <button
@@ -377,10 +380,70 @@ export default function AssignedRequestsPage() {
               </button>
               <button
                 type="submit"
-                disabled={saving}
+                disabled={savingProgress}
                 className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold shadow-xs disabled:opacity-50"
               >
-                {saving ? 'Updating...' : 'Save & Update Order'}
+                {savingProgress ? 'Saving...' : 'Save Progress Log'}
+              </button>
+            </div>
+          </form>
+        </Modal>
+      )}
+
+      {/* Submit Completion Modal */}
+      {completionComplaint && (
+        <Modal
+          isOpen={!!completionComplaint}
+          onClose={() => setCompletionComplaint(null)}
+          title={`Submit Completion for Verification (#${completionComplaint.complaint_ref})`}
+        >
+          <form onSubmit={handleSaveCompletion} className="space-y-4 text-xs">
+            <div className="p-3 bg-emerald-50/60 rounded-xl border border-emerald-100 space-y-1">
+              <p className="font-bold text-slate-800">{completionComplaint.title}</p>
+              <p className="text-[11px] text-slate-600">{completionComplaint.location} • Ward: {completionComplaint.ward || 'General'}</p>
+            </div>
+
+            <div>
+              <label className="block font-semibold text-slate-700 mb-1">
+                Completion Remarks (Required for Area Head Acknowledgement) *
+              </label>
+              <textarea
+                rows={4}
+                value={completionRemarks}
+                onChange={(e) => setCompletionRemarks(e.target.value)}
+                placeholder="Explain what repairs were completed, parts installed, current operational status..."
+                className="w-full p-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 bg-white"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block font-semibold text-slate-700 mb-1">
+                Field Notes / Diagnostics (Optional)
+              </label>
+              <input
+                type="text"
+                value={completionNotes}
+                onChange={(e) => setCompletionNotes(e.target.value)}
+                placeholder="e.g. Field crew Alpha dispatched"
+                className="w-full p-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 bg-white"
+              />
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setCompletionComplaint(null)}
+                className="px-4 py-2 border border-slate-300 rounded-xl text-slate-700 hover:bg-slate-50 font-semibold"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={savingCompletion}
+                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold shadow-xs disabled:opacity-50"
+              >
+                {savingCompletion ? 'Submitting...' : 'Submit to Area Head'}
               </button>
             </div>
           </form>

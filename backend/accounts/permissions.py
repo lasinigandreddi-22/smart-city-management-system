@@ -31,9 +31,18 @@ class IsDepartmentUserRole(permissions.BasePermission):
         if not request.user or not request.user.is_authenticated:
             return False
         return (
-            getattr(request.user.profile, 'role', None) in [UserRole.SERVICE_DEPARTMENT, UserRole.TRAFFIC_OFFICER, UserRole.AREA_HEAD, UserRole.ADMIN] or
+            getattr(request.user.profile, 'role', None) in [
+                UserRole.EMPLOYEE,
+                UserRole.SERVICE_DEPARTMENT,
+                UserRole.TRAFFIC_OFFICER,
+                UserRole.AREA_HEAD,
+                UserRole.ADMIN
+            ] or
             request.user.is_staff or request.user.is_superuser
         )
+
+# Unified Employee Role permission alias
+IsEmployeeUserRole = IsDepartmentUserRole
 
 class IsTrafficOfficerUserRole(permissions.BasePermission):
     def has_permission(self, request, view):
@@ -43,6 +52,6 @@ class IsTrafficOfficerUserRole(permissions.BasePermission):
         dept = getattr(request.user.profile, 'department_name', '').lower()
         return (
             role in [UserRole.TRAFFIC_OFFICER, UserRole.ADMIN, UserRole.AREA_HEAD] or
-            (role == UserRole.SERVICE_DEPARTMENT and 'traffic' in dept) or
+            (role in [UserRole.EMPLOYEE, UserRole.SERVICE_DEPARTMENT] and 'traffic' in dept) or
             request.user.is_staff or request.user.is_superuser
         )

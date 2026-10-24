@@ -85,8 +85,9 @@ export default function CitizenManagementPage() {
         return <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-100 text-purple-800 border border-purple-200">Admin</span>;
       case 'AREA_HEAD':
         return <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-800 border border-blue-200">Area Head</span>;
+      case 'EMPLOYEE':
       case 'SERVICE_DEPARTMENT':
-        return <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-100 text-indigo-800 border border-indigo-200">Dept Staff</span>;
+        return <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-100 text-indigo-800 border border-indigo-200">Employee</span>;
       case 'TRAFFIC_OFFICER':
         return <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-teal-100 text-teal-800 border border-teal-200">Traffic Staff</span>;
       default:
@@ -143,8 +144,8 @@ export default function CitizenManagementPage() {
           >
             <option value="">All Roles</option>
             <option value="CITIZEN">Citizens</option>
+            <option value="EMPLOYEE">Employees (Field Staff)</option>
             <option value="AREA_HEAD">Area Heads / Dept Heads</option>
-            <option value="SERVICE_DEPARTMENT">Department Staff</option>
             <option value="ADMIN">City Administrators</option>
           </select>
         </div>
@@ -244,8 +245,9 @@ export default function CitizenManagementPage() {
                 className="w-full p-2.5 border border-slate-300 rounded-xl font-bold bg-white focus:ring-2 focus:ring-blue-500"
               >
                 <option value="CITIZEN">Citizen (Public Access)</option>
-                <option value="SERVICE_DEPARTMENT">Department Staff / Field Staff</option>
+                <option value="EMPLOYEE">Employee (Field Staff)</option>
                 <option value="AREA_HEAD">Area Head / Department Head</option>
+                <option value="SERVICE_DEPARTMENT">Legacy Department Staff</option>
                 <option value="ADMIN">City Admin / Commissioner</option>
               </select>
             </div>
