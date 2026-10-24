@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { 
   ClipboardList, Clock, CheckCircle2, AlertTriangle, 
-  Droplets, Zap, ArrowRight, ShieldCheck, Wrench 
+  Droplets, Zap, ArrowRight, ShieldCheck, Wrench, IndianRupee 
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../services/api';
@@ -101,6 +101,47 @@ export default function DepartmentDashboard() {
           color="emerald"
         />
       </div>
+
+      {/* Department Financial Summary */}
+      {data?.financial_summary && (
+        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-slate-100 gap-2">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-lg bg-purple-600 text-white flex items-center justify-center">
+                <IndianRupee className="w-4 h-4" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-slate-900">Department Financial & Revenue Summary</h3>
+                <p className="text-xs text-slate-500">
+                  {data.financial_summary.department} • Authorized Jurisdiction: {data.financial_summary.ward}
+                </p>
+              </div>
+            </div>
+            <div className="text-left sm:text-right">
+              <span className="text-[11px] text-slate-500">Department Recovery Rate</span>
+              <div className="text-base font-bold text-emerald-600">{data.financial_summary.collection_rate}%</div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-4">
+            <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
+              <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Total Demanded / Billed</p>
+              <p className="text-xl font-black text-slate-900 mt-1">₹{data.financial_summary.total_demanded?.toLocaleString('en-IN')}</p>
+              <p className="text-[10px] text-slate-400 mt-0.5">{data.financial_summary.department} assessments</p>
+            </div>
+            <div className="bg-emerald-50/70 p-4 rounded-xl border border-emerald-100">
+              <p className="text-[11px] font-semibold text-emerald-800 uppercase tracking-wider">Total Received</p>
+              <p className="text-xl font-black text-emerald-700 mt-1">₹{data.financial_summary.total_received?.toLocaleString('en-IN')}</p>
+              <p className="text-[10px] text-emerald-600/80 mt-0.5">Realized payments</p>
+            </div>
+            <div className="bg-amber-50/70 p-4 rounded-xl border border-amber-100">
+              <p className="text-[11px] font-semibold text-amber-800 uppercase tracking-wider">Total Outstanding</p>
+              <p className="text-xl font-black text-amber-700 mt-1">₹{data.financial_summary.total_outstanding?.toLocaleString('en-IN')}</p>
+              <p className="text-[10px] text-amber-600/80 mt-0.5">Pending collection</p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Assigned Work Queue */}
       <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs space-y-4">

@@ -45,32 +45,8 @@ export default function RegisterPage() {
 
   const navigate = useNavigate();
 
-  // Fetch ward availability when role changes
-  useEffect(() => {
-    async function fetchAvailability() {
-      setLoadingWards(true);
-      try {
-        const res = await api.auth.getWardAvailability(role);
-        setWardAvailability(res.wards || []);
-        // Reset selected ward if it's not available in new role
-        const availableWards = (res.wards || []).filter((w) => w.is_available);
-        if (availableWards.length > 0) {
-          // If current selected ward is not available, pick first available
-          if (!availableWards.some((w) => w.ward_name === ward)) {
-            setWard(availableWards[0].ward_name);
-          }
-        } else {
-          setWard('');
-        }
-      } catch (err) {
-        console.error('Failed to load ward availability:', err);
-      } finally {
-        setLoadingWards(false);
-      }
-    }
-
-    fetchAvailability();
-  }, [role]);
+  // Wards list
+  const configuredWards = ['Ward 1', 'Ward 2', 'Ward 3', 'Ward 4', 'Ward 5', 'Ward 6'];
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -364,50 +340,35 @@ export default function RegisterPage() {
               )}
 
               {/* Ward Allocation & Strict Uniqueness Policy */}
+              {/* Ward Allocation */}
               <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 space-y-3">
                 <div className="flex items-center justify-between">
-                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-700">
+                  <label htmlFor="ward-select" className="block text-xs font-bold uppercase tracking-wider text-slate-700">
                     Select Municipal Ward <span className="text-red-500">*</span>
                   </label>
                   <span className="text-[11px] text-blue-600 font-semibold">
-                    Strict Ward Uniqueness (1 per role)
+                    Configured Wards (Ward 1 to Ward 6)
                   </span>
                 </div>
 
-                {loadingWards ? (
-                  <div className="py-4 text-center text-xs text-slate-400">
-                    Checking ward availability for {role}...
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
-                    {wardAvailability.map((w) => {
-                      const isSelected = ward === w.ward_name;
-                      const isAvail = w.is_available;
-                      return (
-                        <button
-                          key={w.ward_number}
-                          type="button"
-                          disabled={!isAvail}
-                          onClick={() => setWard(w.ward_name)}
-                          className={`p-2.5 rounded-xl border text-center transition-all cursor-pointer ${
-                            !isAvail
-                              ? 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed opacity-60'
-                              : isSelected
-                              ? 'bg-blue-600 text-white border-blue-600 shadow-sm font-bold ring-2 ring-blue-500/30'
-                              : 'bg-white hover:border-blue-300 text-slate-800 border-slate-200'
-                          }`}
-                        >
-                          <div className="text-xs font-bold">{w.ward_name}</div>
-                          <div className={`text-[10px] mt-0.5 ${!isAvail ? 'text-red-500' : isSelected ? 'text-blue-100' : 'text-emerald-600'}`}>
-                            {isAvail ? 'Available' : 'Occupied'}
-                          </div>
-                        </button>
-                      );
-                    })}
-                  </div>
-                )}
+                <div>
+                  <select
+                    id="ward-select"
+                    value={ward}
+                    onChange={(e) => setWard(e.target.value)}
+                    required
+                    className="w-full px-3.5 py-2.5 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 bg-white text-slate-900 font-medium cursor-pointer"
+                  >
+                    <option value="">-- Choose Municipal Ward (Ward 1 to Ward 6) --</option>
+                    {configuredWards.map((wName) => (
+                      <option key={wName} value={wName}>
+                        {wName}
+                      </option>
+                    ))}
+                  </select>
+                </div>
                 <p className="text-[11px] text-slate-500 leading-relaxed">
-                  Notice: For each role ({role}), only one user can occupy a ward. Wards marked &apos;Occupied&apos; already have a registered user in this role.
+                  Notice: Ward availability is verified upon submission based on role allocation rules (1 user per ward for Citizen/Area Head; 1 per department for Employees).
                 </p>
               </div>
 

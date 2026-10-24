@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { 
   Droplets, Zap, Car, AlertCircle, Receipt, 
-  ArrowUpRight, Clock, CheckCircle2, ChevronRight, AlertTriangle
+  ArrowUpRight, Clock, CheckCircle2, ChevronRight, AlertTriangle, CreditCard
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../services/api';
@@ -192,6 +192,101 @@ export default function CitizenDashboard() {
             );
           })}
         </div>
+      </div>
+
+      {/* Department-Wise Municipal Bills & Civic Dues */}
+      <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-slate-100 gap-2">
+          <div className="flex items-center space-x-3">
+            <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+              <Receipt className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="font-bold text-sm text-slate-900">Department Municipal Bills & Civic Dues</h3>
+              <p className="text-xs text-slate-500">
+                Official municipal utility bills, property assessments, and civic service demands
+              </p>
+            </div>
+          </div>
+          <Link
+            to="/property-tax"
+            className="text-xs font-semibold text-emerald-600 hover:text-emerald-800 flex items-center gap-1"
+          >
+            <span>Manage All Tax & Bills</span>
+            <ChevronRight className="w-4 h-4" />
+          </Link>
+        </div>
+
+        {(!data?.bills || data.bills.length === 0) ? (
+          <div className="text-center py-8 text-slate-400 text-xs">
+            No active municipal bills or civic dues currently on record.
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 font-semibold uppercase tracking-wider">
+                <tr>
+                  <th className="py-3 px-4">Bill Ref</th>
+                  <th className="py-3 px-4">Department & Service</th>
+                  <th className="py-3 px-4">Bill Type / Purpose</th>
+                  <th className="py-3 px-4">Billing Period</th>
+                  <th className="py-3 px-4 text-right">Total Amount</th>
+                  <th className="py-3 px-4 text-right">Amount Paid</th>
+                  <th className="py-3 px-4 text-right">Remaining Balance</th>
+                  <th className="py-3 px-4">Due Date</th>
+                  <th className="py-3 px-4 text-center">Status</th>
+                  <th className="py-3 px-4 text-right">Action</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 text-slate-700">
+                {data.bills.map((bill) => (
+                  <tr key={bill.id} className="hover:bg-slate-50/60">
+                    <td className="py-3 px-4 font-mono font-bold text-slate-900">{bill.bill_ref}</td>
+                    <td className="py-3 px-4">
+                      <p className="font-semibold text-slate-900">{bill.department}</p>
+                      <p className="text-[10px] text-slate-400">{bill.service}</p>
+                    </td>
+                    <td className="py-3 px-4">
+                      <p className="font-medium text-slate-800">{bill.bill_type}</p>
+                      {bill.property_ref && (
+                        <p className="text-[10px] text-slate-400">{bill.property_ref}</p>
+                      )}
+                    </td>
+                    <td className="py-3 px-4 font-medium text-slate-700">{bill.billing_period}</td>
+                    <td className="py-3 px-4 text-right font-semibold text-slate-900">
+                      ₹{bill.total_amount?.toLocaleString('en-IN')}
+                    </td>
+                    <td className="py-3 px-4 text-right font-semibold text-emerald-600">
+                      ₹{bill.amount_paid?.toLocaleString('en-IN')}
+                    </td>
+                    <td className="py-3 px-4 text-right font-bold text-rose-600">
+                      ₹{bill.remaining_balance?.toLocaleString('en-IN')}
+                    </td>
+                    <td className="py-3 px-4 text-slate-600">{bill.due_date}</td>
+                    <td className="py-3 px-4 text-center">
+                      <StatusBadge status={bill.payment_status} />
+                    </td>
+                    <td className="py-3 px-4 text-right">
+                      {bill.remaining_balance > 0 ? (
+                        <Link
+                          to="/property-tax"
+                          className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg shadow-2xs transition-colors"
+                        >
+                          <CreditCard className="w-3 h-3" />
+                          Pay Now
+                        </Link>
+                      ) : (
+                        <span className="text-[11px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-md">
+                          Paid in Full
+                        </span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
       {/* Grid: Live Notices & Recent Complaints */}

@@ -16,7 +16,6 @@ export default function AreaIssueQueuePage() {
   const [error, setError] = useState('');
 
   // Filters
-  const [wardFilter, setWardFilter] = useState('');
   const [deptFilter, setDeptFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [priorityFilter, setPriorityFilter] = useState('');
@@ -38,7 +37,6 @@ export default function AreaIssueQueuePage() {
     try {
       setLoading(true);
       const params = {};
-      if (wardFilter) params.ward = wardFilter;
       if (deptFilter) params.department = deptFilter;
       if (statusFilter) params.status = statusFilter;
       if (priorityFilter) params.priority = priorityFilter;
@@ -63,7 +61,7 @@ export default function AreaIssueQueuePage() {
 
   useEffect(() => {
     fetchIssues();
-  }, [wardFilter, deptFilter, statusFilter, priorityFilter, overdueOnly, sortBy]);
+  }, [deptFilter, statusFilter, priorityFilter, overdueOnly, sortBy]);
 
   const handleSearchSubmit = (e) => {
     e.preventDefault();
@@ -155,19 +153,13 @@ export default function AreaIssueQueuePage() {
         </form>
 
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 text-xs">
-          {/* Ward filter */}
+          {/* Authorized Ward Display */}
           <div>
-            <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Ward / Zone</label>
-            <select
-              value={wardFilter}
-              onChange={(e) => setWardFilter(e.target.value)}
-              className="w-full p-2 border border-slate-300 rounded-lg bg-white"
-            >
-              <option value="">All Authorized Wards</option>
-              {Array.from({ length: 10 }, (_, i) => `Ward ${i + 1}`).map((w) => (
-                <option key={w} value={w}>{w}</option>
-              ))}
-            </select>
+            <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Authorized Jurisdiction</label>
+            <div className="p-2 border border-blue-200 rounded-lg bg-blue-50/70 text-blue-800 font-semibold text-xs flex items-center gap-1.5 truncate">
+              <MapPin className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+              <span>{user?.profile?.assigned_zone || 'Ward 1'}</span>
+            </div>
           </div>
 
           {/* Department filter */}

@@ -30,6 +30,7 @@ class SmartCityAPITests(TestCase):
         self.dept_user = User.objects.create_user(username='test_dept', password='password123', email='dept@test.com')
         self.dept_user.profile.role = UserRole.SERVICE_DEPARTMENT
         self.dept_user.profile.department_name = 'Water & Electricity Services'
+        self.dept_user.profile.assigned_zone = 'City-wide'
         self.dept_user.profile.save()
 
     def test_login_success_and_token(self):
@@ -185,7 +186,7 @@ class SmartCityAPITests(TestCase):
         # Create Area Head
         area_head = User.objects.create_user(username='test_head', password='password123', email='head@test.com')
         area_head.profile.role = UserRole.AREA_HEAD
-        area_head.profile.assigned_zone = 'North Zone'
+        area_head.profile.assigned_zone = 'Ward 1'
         area_head.profile.save()
 
         # Create Complaint
@@ -194,7 +195,7 @@ class SmartCityAPITests(TestCase):
             citizen=self.citizen1,
             title='Main Pipe Rupture in North Ward',
             category='Water Supply',
-            ward='North Zone',
+            ward='Ward 1',
             location='Sector 4',
             priority='High',
             status=ComplaintStatus.SUBMITTED,
@@ -650,7 +651,7 @@ class SmartCityAPITests(TestCase):
         # Check ward availability for CITIZEN
         res = self.client.get('/api/auth/wards/availability/?role=CITIZEN')
         self.assertEqual(res.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(res.data['wards']), 10)
+        self.assertEqual(len(res.data['wards']), 6)
         self.assertIn('is_available', res.data['wards'][0])
 
     def test_admin_password_reset(self):

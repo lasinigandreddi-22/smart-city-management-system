@@ -256,7 +256,7 @@ class WardListAPIView(views.APIView):
     def get(self, request):
         wards = Ward.objects.all().order_by('ward_number')
         if not wards.exists():
-            data = [{'id': i, 'name': f'Ward {i}', 'ward_number': i, 'description': f'Municipal Ward {i}'} for i in range(1, 11)]
+            data = [{'id': i, 'name': f'Ward {i}', 'ward_number': i, 'description': f'Municipal Ward {i}'} for i in range(1, 7)]
         else:
             data = [{'id': w.id, 'name': w.name, 'ward_number': w.ward_number, 'description': w.description} for w in wards]
         return Response(data)
@@ -299,7 +299,7 @@ class RegisterAPIView(views.APIView):
         normalized_ward = normalize_ward_name(raw_ward)
 
         # Check Ward Uniqueness Rule: no two users of same role can share a ward
-        is_available, error_msg = validate_role_ward_uniqueness(role, normalized_ward)
+        is_available, error_msg = validate_role_ward_uniqueness(role, normalized_ward, department=department_name)
         if not is_available:
             return Response({'error': error_msg}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -358,6 +358,7 @@ class WardAvailabilityAPIView(views.APIView):
 
     def get(self, request):
         role = request.query_params.get('role', 'CITIZEN').strip().upper()
+        department = request.query_params.get('department', '').strip()
         exclude_id = request.query_params.get('exclude_user_id')
         if exclude_id:
             try:
@@ -366,9 +367,9 @@ class WardAvailabilityAPIView(views.APIView):
                 exclude_id = None
 
         results = []
-        for i in range(1, 11):
+        for i in range(1, 7):
             ward_name = f'Ward {i}'
-            is_available, err = validate_role_ward_uniqueness(role, ward_name, exclude_user_id=exclude_id)
+            is_available, err = validate_role_ward_uniqueness(role, ward_name, department=department, exclude_user_id=exclude_id)
 
             occupied_by = None
             if not is_available:
@@ -376,6 +377,8 @@ class WardAvailabilityAPIView(views.APIView):
                 if role in [UserRole.EMPLOYEE, UserRole.SERVICE_DEPARTMENT, UserRole.TRAFFIC_OFFICER]:
                     roles_to_check = [UserRole.EMPLOYEE, UserRole.SERVICE_DEPARTMENT, UserRole.TRAFFIC_OFFICER]
                 q = UserProfile.objects.filter(role__in=roles_to_check, assigned_zone__iexact=ward_name)
+                if department and role in [UserRole.EMPLOYEE, UserRole.SERVICE_DEPARTMENT, UserRole.TRAFFIC_OFFICER]:
+                    q = q.filter(department_name__iexact=department)
                 if exclude_id:
                     q = q.exclude(user__id=exclude_id)
                 occupant = q.first()
@@ -461,7 +464,7 @@ class UserManagementAPIView(views.APIView):
 
         # Check ward uniqueness
         if role != UserRole.ADMIN and normalized_ward and normalized_ward.lower() not in ['city-wide', 'all', 'all wards']:
-            is_available, err = validate_role_ward_uniqueness(role, normalized_ward)
+            is_available, err = validate_role_ward_uniqueness(role, normalized_ward, department=department_name)
             if not is_available:
                 return Response({'error': err}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -515,11 +518,12 @@ class UserManagementAPIView(views.APIView):
 
         # Determine target role & ward for uniqueness validation
         target_role = data.get('role', profile.role)
+        target_dept = data.get('department_name', profile.department_name)
         raw_ward = data.get('assigned_zone') or data.get('ward')
         target_ward = normalize_ward_name(raw_ward) if raw_ward is not None else profile.assigned_zone
 
         if target_role != UserRole.ADMIN and target_ward and target_ward.lower() not in ['city-wide', 'all', 'all wards']:
-            is_available, err = validate_role_ward_uniqueness(target_role, target_ward, exclude_user_id=target_user.id)
+            is_available, err = validate_role_ward_uniqueness(target_role, target_ward, department=target_dept, exclude_user_id=target_user.id)
             if not is_available:
                 return Response({'error': err}, status=status.HTTP_400_BAD_REQUEST)
 

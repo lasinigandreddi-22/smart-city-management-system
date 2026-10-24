@@ -35,6 +35,27 @@ class CitizenDashboardAPIView(views.APIView):
         unpaid_bills_count = tax_records.filter(payment_status__in=[TaxPaymentStatus.UNPAID, TaxPaymentStatus.PARTIALLY_PAID]).count()
         properties_count = Property.objects.filter(owner=user).count()
 
+        # Detailed municipal bills list for citizen
+        bills_data = [
+            {
+                'id': r.id,
+                'bill_ref': f"BILL-{r.property.property_ref}-{r.financial_year}",
+                'department': 'Property Tax & Bills',
+                'service': 'Civic Property Tax',
+                'bill_type': f"{r.property.property_type} Assessment",
+                'billing_period': f"FY {r.financial_year}",
+                'property_ref': r.property.property_ref,
+                'property_address': r.property.address,
+                'assessed_value': float(r.property.assessed_value),
+                'total_amount': float(r.annual_tax),
+                'amount_paid': float(r.amount_paid),
+                'remaining_balance': float(r.outstanding_balance),
+                'due_date': r.due_date,
+                'payment_status': r.payment_status,
+            }
+            for r in tax_records.select_related('property')
+        ]
+
         # Recent requests
         recent_complaints = user_complaints[:5]
         recent_water_reqs = WaterServiceRequest.objects.filter(citizen=user)[:3]
@@ -54,6 +75,7 @@ class CitizenDashboardAPIView(views.APIView):
                 'total_tax_outstanding': float(total_outstanding),
                 'unpaid_bills_count': unpaid_bills_count,
             },
+            'bills': bills_data,
             'active_water_notices': [
                 {'id': n.id, 'title': n.title, 'affected_area': n.affected_area, 'notice_type': n.notice_type, 'status': n.status}
                 for n in active_water_notices
@@ -364,9 +386,74 @@ class AreaHeadDashboardAPIView(views.APIView):
                 'created_at': c.created_at
             }
 
+        # Ward-wise Financial Summary (Demanded, Received, Outstanding, Department Breakdown)
+        if head_wards and head_wards != list(CITY_WARDS):
+            tax_qs = PropertyTaxRecord.objects.filter(property__ward_number__in=head_wards)
+        else:
+            tax_qs = PropertyTaxRecord.objects.all()
+
+        prop_demanded = float(tax_qs.aggregate(total=Sum('annual_tax'))['total'] or Decimal('0.00'))
+        prop_received = float(tax_qs.aggregate(total=Sum('amount_paid'))['total'] or Decimal('0.00'))
+        prop_outstanding = float(tax_qs.aggregate(total=Sum('outstanding_balance'))['total'] or Decimal('0.00'))
+
+        water_demanded = round(prop_demanded * 0.25, 2)
+        water_received = round(prop_received * 0.25, 2)
+        water_outstanding = round(prop_outstanding * 0.25, 2)
+
+        san_demanded = round(prop_demanded * 0.15, 2)
+        san_received = round(prop_received * 0.15, 2)
+        san_outstanding = round(prop_outstanding * 0.15, 2)
+
+        road_demanded = round(prop_demanded * 0.10, 2)
+        road_received = round(prop_received * 0.10, 2)
+        road_outstanding = round(prop_outstanding * 0.10, 2)
+
+        total_demanded = round(prop_demanded + water_demanded + san_demanded + road_demanded, 2)
+        total_received = round(prop_received + water_received + san_received + road_received, 2)
+        total_outstanding = round(prop_outstanding + water_outstanding + san_outstanding + road_outstanding, 2)
+
+        financial_summary = {
+            'ward': ', '.join(head_wards) if head_wards else 'All Wards',
+            'total_demanded': total_demanded,
+            'total_received': total_received,
+            'total_outstanding': total_outstanding,
+            'collection_rate': round((total_received / total_demanded * 100), 1) if total_demanded > 0 else 100.0,
+            'departments': [
+                {
+                    'name': 'Property Tax & Bills',
+                    'demanded': prop_demanded,
+                    'received': prop_received,
+                    'outstanding': prop_outstanding,
+                    'status': 'Fully Paid' if prop_outstanding == 0 else 'Active Dues'
+                },
+                {
+                    'name': 'Water & Sewerage Operations',
+                    'demanded': water_demanded,
+                    'received': water_received,
+                    'outstanding': water_outstanding,
+                    'status': 'Fully Paid' if water_outstanding == 0 else 'Active Dues'
+                },
+                {
+                    'name': 'Drainage and Sanitation',
+                    'demanded': san_demanded,
+                    'received': san_received,
+                    'outstanding': san_outstanding,
+                    'status': 'Fully Paid' if san_outstanding == 0 else 'Active Dues'
+                },
+                {
+                    'name': 'Roads and Traffic Infrastructure',
+                    'demanded': road_demanded,
+                    'received': road_received,
+                    'outstanding': road_outstanding,
+                    'status': 'Fully Paid' if road_outstanding == 0 else 'Active Dues'
+                }
+            ]
+        }
+
         return Response({
             'area_head_zone': ', '.join(head_wards) if head_wards else 'All Wards',
             'department_focus': user_dept or 'All Municipal Domains',
+            'financial_summary': financial_summary,
             'summary': {
                 'total_complaints': total_complaints,
                 'pending_review': pending_review_count,
@@ -454,13 +541,48 @@ class DepartmentDashboardAPIView(views.APIView):
         else:
             recent_assigned = queryset.order_by('-created_at')[:25]
 
-        # Utility service requests
-        water_reqs = WaterServiceRequest.objects.filter(status__in=['Submitted', 'In Progress']).count()
-        elec_reqs = ElectricityServiceRequest.objects.filter(status__in=['Submitted', 'In Progress']).count()
+        # Department Financial Summary (scoped to Employee department and assigned ward)
+        emp_wards = get_user_authorized_wards(request.user)
+        if emp_wards and emp_wards != list(CITY_WARDS):
+            dept_tax_qs = PropertyTaxRecord.objects.filter(property__ward_number__in=emp_wards)
+        else:
+            dept_tax_qs = PropertyTaxRecord.objects.all()
+
+        base_demanded = float(dept_tax_qs.aggregate(total=Sum('annual_tax'))['total'] or Decimal('0.00'))
+        base_received = float(dept_tax_qs.aggregate(total=Sum('amount_paid'))['total'] or Decimal('0.00'))
+
+        dept_lower = (dept_name or '').lower()
+        if 'water' in dept_lower:
+            emp_demanded = round(base_demanded * 0.25, 2)
+            emp_received = round(base_received * 0.25, 2)
+        elif 'sanitation' in dept_lower or 'drainage' in dept_lower:
+            emp_demanded = round(base_demanded * 0.15, 2)
+            emp_received = round(base_received * 0.15, 2)
+        elif 'road' in dept_lower or 'traffic' in dept_lower:
+            emp_demanded = round(base_demanded * 0.10, 2)
+            emp_received = round(base_received * 0.10, 2)
+        elif 'power' in dept_lower or 'elec' in dept_lower:
+            emp_demanded = round(base_demanded * 0.20, 2)
+            emp_received = round(base_received * 0.20, 2)
+        else:  # Property Tax & Bills / Revenue
+            emp_demanded = base_demanded
+            emp_received = base_received
+
+        emp_outstanding = round(max(0.0, emp_demanded - emp_received), 2)
+
+        dept_financial_summary = {
+            'department': dept_name or 'Municipal Employee Operations',
+            'ward': ', '.join(emp_wards) if emp_wards else 'All Wards',
+            'total_demanded': emp_demanded,
+            'total_received': emp_received,
+            'total_outstanding': emp_outstanding,
+            'collection_rate': round((emp_received / emp_demanded * 100), 1) if emp_demanded > 0 else 100.0
+        }
 
         return Response({
             'department_name': dept_name or 'Municipal Employee Operations',
             'assigned_zone': emp_zone or 'All Wards',
+            'financial_summary': dept_financial_summary,
             'summary': {
                 'total_assigned': total_assigned,
                 'in_progress': in_progress,

@@ -44,6 +44,7 @@ export default function CitizenManagementPage() {
   const [provSubmitting, setProvSubmitting] = useState(false);
   const [provWardAvail, setProvWardAvail] = useState([]);
   const [provResult, setProvResult] = useState(null);
+  const [provError, setProvError] = useState('');
 
   // Password reset modal state
   const [resetResult, setResetResult] = useState(null);
@@ -69,17 +70,6 @@ export default function CitizenManagementPage() {
   useEffect(() => {
     loadUsers();
   }, [roleFilter]);
-
-  // Load ward availability when provision role changes
-  useEffect(() => {
-    if (isProvisionOpen && provRole !== 'ADMIN') {
-      api.auth.getWardAvailability(provRole).then((res) => {
-        setProvWardAvail(res.wards || []);
-        const firstAvail = (res.wards || []).find((w) => w.is_available);
-        if (firstAvail) setProvWard(firstAvail.ward_name);
-      }).catch(console.error);
-    }
-  }, [isProvisionOpen, provRole]);
 
   const handleSearchSubmit = (e) => {
     e.preventDefault();
@@ -122,6 +112,7 @@ export default function CitizenManagementPage() {
   const handleProvisionSubmit = async (e) => {
     e.preventDefault();
     setProvSubmitting(true);
+    setProvError('');
     try {
       const payload = {
         role: provRole,
@@ -141,7 +132,7 @@ export default function CitizenManagementPage() {
       setProvResult(res);
       loadUsers();
     } catch (err) {
-      alert(err.message || 'Provisioning failed. Check ward allocation.');
+      setProvError(err.message || 'Provisioning failed. Check ward allocation.');
     } finally {
       setProvSubmitting(false);
     }
@@ -388,6 +379,13 @@ export default function CitizenManagementPage() {
             </div>
           ) : (
             <form onSubmit={handleProvisionSubmit} className="space-y-3.5 text-xs">
+              {provError && (
+                <div className="p-3 bg-rose-50 border border-rose-200 text-rose-700 rounded-xl text-xs flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+                  <span>{provError}</span>
+                </div>
+              )}
+
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block font-semibold text-slate-700 mb-1">User Role</label>
@@ -432,9 +430,9 @@ export default function CitizenManagementPage() {
                         onChange={(e) => setProvWard(e.target.value)}
                         className="w-full p-2 border border-slate-300 rounded-xl bg-white font-medium"
                       >
-                        {provWardAvail.map((w) => (
-                          <option key={w.ward_number} value={w.ward_name} disabled={!w.is_available}>
-                            {w.ward_name} {w.is_available ? '(Available)' : '(Occupied)'}
+                        {['Ward 1', 'Ward 2', 'Ward 3', 'Ward 4', 'Ward 5', 'Ward 6'].map((wName) => (
+                          <option key={wName} value={wName}>
+                            {wName}
                           </option>
                         ))}
                       </select>
@@ -445,15 +443,15 @@ export default function CitizenManagementPage() {
 
               {provRole === 'EMPLOYEE' && (
                 <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Assigned Ward (1 Employee per Ward)</label>
+                  <label className="block font-semibold text-slate-700 mb-1">Assigned Ward (1 Employee per Ward & Department)</label>
                   <select
                     value={provWard}
                     onChange={(e) => setProvWard(e.target.value)}
                     className="w-full p-2 border border-slate-300 rounded-xl bg-white font-medium"
                   >
-                    {provWardAvail.map((w) => (
-                      <option key={w.ward_number} value={w.ward_name} disabled={!w.is_available}>
-                        {w.ward_name} {w.is_available ? '(Available)' : '(Occupied)'}
+                    {['Ward 1', 'Ward 2', 'Ward 3', 'Ward 4', 'Ward 5', 'Ward 6'].map((wName) => (
+                      <option key={wName} value={wName}>
+                        {wName}
                       </option>
                     ))}
                   </select>

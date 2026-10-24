@@ -3,10 +3,15 @@ from .views import (
     WaterNoticeListCreateAPIView, WaterNoticeDetailAPIView,
     WaterServiceRequestListCreateAPIView, WaterServiceRequestDetailAPIView,
     ElectricityNoticeListCreateAPIView, ElectricityNoticeDetailAPIView,
-    ElectricityServiceRequestListCreateAPIView, ElectricityServiceRequestDetailAPIView
+    ElectricityServiceRequestListCreateAPIView, ElectricityServiceRequestDetailAPIView,
+    CivicNoticeListCreateAPIView, CivicNoticeDetailAPIView
 )
 
 urlpatterns = [
+    # Civic Utility Notices (Water, Power, Traffic, Sanitation)
+    path('civic-notices/', CivicNoticeListCreateAPIView.as_view(), name='civic-notices'),
+    path('civic-notices/<int:pk>/', CivicNoticeDetailAPIView.as_view(), name='civic-notice-detail'),
+
     # Water Management
     path('water/notices/', WaterNoticeListCreateAPIView.as_view(), name='water-notices'),
     path('water/notices/<int:pk>/', WaterNoticeDetailAPIView.as_view(), name='water-notice-detail'),
@@ -19,3 +24,4 @@ urlpatterns = [
     path('electricity/requests/', ElectricityServiceRequestListCreateAPIView.as_view(), name='electricity-requests'),
     path('electricity/requests/<int:pk>/', ElectricityServiceRequestDetailAPIView.as_view(), name='electricity-request-detail'),
 ]
+

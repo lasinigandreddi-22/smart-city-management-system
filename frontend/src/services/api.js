@@ -49,9 +49,10 @@ export const api = {
     getProfile: () => request('/auth/profile/'),
     updateProfile: (data) => request('/auth/profile/', { method: 'PATCH', body: JSON.stringify(data) }),
     getWards: () => request('/auth/wards/'),
-    getWardAvailability: (role, excludeUserId = null) => {
+    getWardAvailability: (role, excludeUserId = null, department = '') => {
       const params = new URLSearchParams({ role });
       if (excludeUserId) params.append('exclude_user_id', excludeUserId);
+      if (department) params.append('department', department);
       return request(`/auth/wards/availability/?${params.toString()}`);
     },
     getCitizens: () => request('/auth/citizens/'),
@@ -87,8 +88,16 @@ export const api = {
     delete: (id) => request(`/complaints/${id}/`, { method: 'DELETE' }),
   },
 
-  // Utilities: Water & Electricity
+  // Utilities: Civic Notices (Water, Power, Traffic, Sanitation), Water & Electricity
   utilities: {
+    getCivicNotices: (params = {}) => {
+      const query = new URLSearchParams(params).toString();
+      return request(`/utilities/civic-notices/${query ? `?${query}` : ''}`);
+    },
+    createCivicNotice: (data) => request('/utilities/civic-notices/', { method: 'POST', body: JSON.stringify(data) }),
+    updateCivicNotice: (id, data) => request(`/utilities/civic-notices/${id}/`, { method: 'PATCH', body: JSON.stringify(data) }),
+    deleteCivicNotice: (id) => request(`/utilities/civic-notices/${id}/`, { method: 'DELETE' }),
+
     getWaterNotices: (status) => request(`/utilities/water/notices/${status ? `?status=${status}` : ''}`),
     createWaterNotice: (data) => request('/utilities/water/notices/', { method: 'POST', body: JSON.stringify(data) }),
     updateWaterNotice: (id, data) => request(`/utilities/water/notices/${id}/`, { method: 'PATCH', body: JSON.stringify(data) }),

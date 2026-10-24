@@ -27,7 +27,6 @@ export default function Sidebar({ isOpen, onClose }) {
           { to: '/area-head/queue', label: 'Area Issue Queue', icon: ClipboardList },
           { to: '/admin/complaints', label: 'All Complaints', icon: AlertCircle },
           { to: '/admin/utility-notices', label: 'Utility Notices', icon: BellRing },
-          { to: '/admin/traffic', label: 'Traffic Overview', icon: Car },
         ];
       case 'EMPLOYEE':
       case 'SERVICE_DEPARTMENT': {

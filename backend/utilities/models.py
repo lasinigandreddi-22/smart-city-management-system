@@ -5,6 +5,8 @@ class NoticeStatus(models.TextChoices):
     ACTIVE = 'Active', 'Active'
     SCHEDULED = 'Scheduled', 'Scheduled'
     RESOLVED = 'Resolved', 'Resolved'
+    CANCELLED = 'Cancelled', 'Cancelled'
+
 
 class ServiceRequestStatus(models.TextChoices):
     SUBMITTED = 'Submitted', 'Submitted'
@@ -97,3 +99,37 @@ class ElectricityServiceRequest(models.Model):
 
     def __str__(self):
         return f"Electricity Req #{self.id} ({self.request_type}) - {self.citizen.username}"
+
+class NoticeCategory(models.TextChoices):
+    WATER = 'Water Pipeline', 'Water Pipeline Notices'
+    POWER = 'Power Grid', 'Power Grid Notices'
+    TRAFFIC = 'Road and Traffic', 'Road and Traffic Notices'
+    SANITATION = 'Road and Sanitation', 'Road and Sanitation Notices'
+
+class NoticeAudience(models.TextChoices):
+    ALL = 'All', 'Citizens & Employees'
+    CITIZENS = 'Citizens', 'Citizens Only'
+    EMPLOYEES = 'Employees', 'Department Employees Only'
+
+class CivicNotice(models.Model):
+    category = models.CharField(max_length=50, choices=NoticeCategory.choices, default=NoticeCategory.WATER)
+    title = models.CharField(max_length=200)
+    notice_type = models.CharField(max_length=100, default='Scheduled Maintenance')
+    description = models.TextField()
+    affected_area = models.CharField(max_length=200)
+    target_ward = models.CharField(max_length=50, blank=True, default='')
+    department = models.CharField(max_length=100, blank=True, default='')
+    audience = models.CharField(max_length=50, choices=NoticeAudience.choices, default=NoticeAudience.ALL)
+    status = models.CharField(max_length=20, choices=NoticeStatus.choices, default=NoticeStatus.ACTIVE)
+    published_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='published_civic_notices')
+    scheduled_start = models.DateTimeField(null=True, blank=True)
+    scheduled_end = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        ward_info = f" [{self.target_ward}]" if self.target_ward else ""
+        return f"[{self.category}]{ward_info} {self.title}"

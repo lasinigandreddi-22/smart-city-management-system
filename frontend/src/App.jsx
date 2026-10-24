@@ -44,6 +44,8 @@ import AreaIssueQueuePage from './pages/area_head/AreaIssueQueuePage';
 
 // Common Pages
 import AccessDeniedPage from './pages/common/AccessDeniedPage';
+import ProfilePage from './pages/common/ProfilePage';
+
 
 function RoleBasedHomeRedirect() {
   const { user, role, isAuthenticated, loading } = useAuth();
@@ -240,7 +242,7 @@ export default function App() {
             />
 
             {/* Common System Routes */}
-            <Route path="/profile" element={<Navigate to="/" replace />} />
+            <Route path="/profile" element={<ProfilePage />} />
             <Route path="/access-denied" element={<AccessDeniedPage />} />
           </Route>
 

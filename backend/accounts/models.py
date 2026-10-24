@@ -12,7 +12,7 @@ class UserRole(models.TextChoices):
     SERVICE_DEPARTMENT = 'SERVICE_DEPARTMENT', 'Employee (Legacy Staff)'
     TRAFFIC_OFFICER = 'TRAFFIC_OFFICER', 'Employee (Legacy Traffic)'
 
-CITY_WARDS = [f'Ward {i}' for i in range(1, 11)]
+CITY_WARDS = [f'Ward {i}' for i in range(1, 7)]
 
 class Ward(models.Model):
     name = models.CharField(max_length=50, unique=True)
@@ -28,7 +28,8 @@ class Ward(models.Model):
 def get_user_authorized_wards(user):
     """
     Returns the list of standardized ward strings (e.g. ['Ward 1']) authorized for the user.
-    Admin, staff, superuser, or users with 'All Wards' / 'City-wide' have access to all 10 wards.
+    Admin, staff, or superuser have access to all configured wards.
+    Area Heads and Employees must have an explicit assigned_zone; otherwise an empty list is returned.
     """
     if not user or not user.is_authenticated:
         return []
@@ -38,7 +39,9 @@ def get_user_authorized_wards(user):
         return list(CITY_WARDS)
 
     zone = getattr(user.profile, 'assigned_zone', '').strip()
-    if not zone or zone.lower() in ['all', 'all wards', 'city-wide']:
+    if not zone:
+        return []
+    if zone.lower() in ['all', 'all wards', 'city-wide']:
         return list(CITY_WARDS)
 
     raw_tokens = [w.strip() for w in zone.replace(';', ',').split(',') if w.strip()]
@@ -98,10 +101,13 @@ def normalize_ward_name(ward):
             return cw
     return w
 
-def validate_role_ward_uniqueness(role, ward, exclude_user_id=None):
+def validate_role_ward_uniqueness(role, ward, department=None, exclude_user_id=None):
     """
-    Ward Uniqueness Rule:
-    For the same role, no two users can be assigned the same ward number.
+    Ward Uniqueness Rules:
+    - Citizen: 1 Citizen per ward.
+    - Area Head: 1 Area Head per ward.
+    - Employee: Uniqueness by (ward, department) assignment, allowing different departments
+      to operate in the same ward without conflict.
     Returns (is_available, error_message).
     """
     if not ward or str(ward).strip().lower() in ['', 'city-wide', 'all', 'all wards']:
@@ -111,26 +117,46 @@ def validate_role_ward_uniqueness(role, ward, exclude_user_id=None):
 
     if role in [UserRole.EMPLOYEE, UserRole.SERVICE_DEPARTMENT, UserRole.TRAFFIC_OFFICER]:
         roles_to_check = [UserRole.EMPLOYEE, UserRole.SERVICE_DEPARTMENT, UserRole.TRAFFIC_OFFICER]
-        role_label = 'Employee'
-    elif role == UserRole.AREA_HEAD:
-        roles_to_check = [UserRole.AREA_HEAD]
-        role_label = 'Area Head'
-    elif role == UserRole.CITIZEN:
-        roles_to_check = [UserRole.CITIZEN]
-        role_label = 'Citizen'
-    else:
+        dept_norm = (department or '').strip()
+        query = UserProfile.objects.filter(
+            role__in=roles_to_check,
+            assigned_zone__iexact=normalized_ward
+        )
+        if dept_norm:
+            # Check within the same department
+            query = query.filter(department_name__iexact=dept_norm)
+        if exclude_user_id:
+            query = query.exclude(user__id=exclude_user_id)
+
+        if query.exists():
+            occupied_by = query.first().user
+            dept_label = f" ({dept_norm})" if dept_norm else ""
+            return False, f"This ward is already assigned to another user with your role{dept_label}. Please select another ward."
         return True, None
 
-    query = UserProfile.objects.filter(
-        role__in=roles_to_check,
-        assigned_zone__iexact=normalized_ward
-    )
-    if exclude_user_id:
-        query = query.exclude(user__id=exclude_user_id)
+    elif role == UserRole.AREA_HEAD:
+        query = UserProfile.objects.filter(
+            role=UserRole.AREA_HEAD,
+            assigned_zone__iexact=normalized_ward
+        )
+        if exclude_user_id:
+            query = query.exclude(user__id=exclude_user_id)
 
-    if query.exists():
-        occupied_by = query.first().user
-        return False, f"{normalized_ward} is already assigned to {role_label} ({occupied_by.get_full_name() or occupied_by.username}). Each ward can only have one user per role."
+        if query.exists():
+            return False, "This ward is already assigned to another user with your role. Please select another ward."
+        return True, None
+
+    elif role == UserRole.CITIZEN:
+        query = UserProfile.objects.filter(
+            role=UserRole.CITIZEN,
+            assigned_zone__iexact=normalized_ward
+        )
+        if exclude_user_id:
+            query = query.exclude(user__id=exclude_user_id)
+
+        if query.exists():
+            return False, "This ward is already assigned to another user with your role. Please select another ward."
+        return True, None
 
     return True, None
 

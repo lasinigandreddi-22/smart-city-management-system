@@ -1,5 +1,18 @@
 from rest_framework import serializers
-from .models import WaterNotice, WaterServiceRequest, ElectricityNotice, ElectricityServiceRequest
+from .models import WaterNotice, WaterServiceRequest, ElectricityNotice, ElectricityServiceRequest, CivicNotice
+
+class CivicNoticeSerializer(serializers.ModelSerializer):
+    published_by_name = serializers.SerializerMethodField()
+
+    class Meta:
+        model = CivicNotice
+        fields = '__all__'
+        read_only_fields = ['id', 'created_at', 'updated_at']
+
+    def get_published_by_name(self, obj):
+        if obj.published_by:
+            return obj.published_by.get_full_name() or obj.published_by.username
+        return 'System Administration'
 
 class WaterNoticeSerializer(serializers.ModelSerializer):
     class Meta:

@@ -135,6 +135,14 @@ export default function PropertyTaxPage() {
         </span>
       </div>
 
+      {/* Assessed Property Value vs Actual Tax Demand Clarification */}
+      <div className="p-4 bg-blue-50 border border-blue-200 rounded-xl flex items-start space-x-3 text-xs text-blue-900 shadow-2xs">
+        <Building2 className="w-5 h-5 shrink-0 text-blue-600 mt-0.5" />
+        <div>
+          <strong className="font-bold">Important Tax Notice:</strong> Assessed property value is the valuation used to calculate property tax. It is not the amount you need to pay. Your actual tax demand, payments, and remaining balance are shown separately.
+        </div>
+      </div>
+
       {/* Financial Metrics Summary */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="p-5 bg-white rounded-xl border border-slate-200 shadow-xs">
@@ -196,27 +204,35 @@ export default function PropertyTaxPage() {
                   {p.tax_records?.map((t) => (
                     <div key={t.id} className="p-4 rounded-xl border border-slate-100 bg-slate-50/70 space-y-3">
                       <div className="flex items-center justify-between">
-                        <span className="text-xs font-bold text-slate-800">FY {t.financial_year} Assessment</span>
+                        <span className="text-xs font-bold text-slate-800">
+                          Assessment Period: <strong className="text-slate-900">FY {t.financial_year}</strong>
+                        </span>
                         <StatusBadge status={t.payment_status} />
                       </div>
 
-                      <div className="grid grid-cols-3 gap-2 text-xs">
-                        <div>
-                          <p className="text-[10px] text-slate-400">Annual Tax</p>
-                          <p className="font-bold text-slate-800">₹{Number(t.annual_tax).toLocaleString('en-IN')}</p>
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+                        <div className="bg-white p-2 rounded-lg border border-slate-200/60">
+                          <p className="text-[10px] text-slate-400">Assessed Property Value</p>
+                          <p className="font-semibold text-slate-700">₹{Number(p.assessed_value).toLocaleString('en-IN')}</p>
                         </div>
-                        <div>
-                          <p className="text-[10px] text-slate-400">Paid So Far</p>
+                        <div className="bg-white p-2 rounded-lg border border-slate-200/60">
+                          <p className="text-[10px] text-slate-400">Actual Tax Due</p>
+                          <p className="font-bold text-slate-900">₹{Number(t.annual_tax).toLocaleString('en-IN')}</p>
+                        </div>
+                        <div className="bg-white p-2 rounded-lg border border-slate-200/60">
+                          <p className="text-[10px] text-slate-400">Amount Paid</p>
                           <p className="font-bold text-emerald-600">₹{Number(t.amount_paid).toLocaleString('en-IN')}</p>
                         </div>
-                        <div>
-                          <p className="text-[10px] text-slate-400">Balance Due</p>
+                        <div className="bg-white p-2 rounded-lg border border-slate-200/60">
+                          <p className="text-[10px] text-slate-400">Remaining Balance</p>
                           <p className="font-bold text-rose-600">₹{Number(t.outstanding_balance).toLocaleString('en-IN')}</p>
                         </div>
                       </div>
 
                       <div className="pt-2 border-t border-slate-200/60 flex items-center justify-between">
-                        <span className="text-[10px] text-slate-400">Due by: {t.due_date}</span>
+                        <span className="text-[11px] text-slate-500">
+                          Due Date: <strong className="text-slate-700">{t.due_date}</strong>
+                        </span>
                         <div className="flex items-center space-x-2">
                           <button
                             onClick={() => navigate(`/property-tax/${t.id}`)}

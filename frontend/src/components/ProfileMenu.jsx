@@ -133,12 +133,14 @@ export default function ProfileMenu() {
     switch (roleName) {
       case 'ADMIN':
         return <span className="bg-red-50 text-red-700 border border-red-200 text-[11px] font-bold px-2 py-0.5 rounded-full">Administrator</span>;
+      case 'AREA_HEAD':
+        return <span className="bg-purple-50 text-purple-700 border border-purple-200 text-[11px] font-bold px-2 py-0.5 rounded-full">Area Head</span>;
+      case 'EMPLOYEE':
       case 'SERVICE_DEPARTMENT':
-        return <span className="bg-purple-50 text-purple-700 border border-purple-200 text-[11px] font-bold px-2 py-0.5 rounded-full">Department Staff</span>;
       case 'TRAFFIC_OFFICER':
-        return <span className="bg-amber-50 text-amber-700 border border-amber-200 text-[11px] font-bold px-2 py-0.5 rounded-full">Traffic Officer</span>;
+        return <span className="bg-emerald-50 text-emerald-700 border border-emerald-200 text-[11px] font-bold px-2 py-0.5 rounded-full">Employee</span>;
       default:
-        return <span className="bg-teal-50 text-teal-700 border border-teal-200 text-[11px] font-bold px-2 py-0.5 rounded-full">Citizen</span>;
+        return <span className="bg-blue-50 text-blue-700 border border-blue-200 text-[11px] font-bold px-2 py-0.5 rounded-full">Citizen</span>;
     }
   };
 

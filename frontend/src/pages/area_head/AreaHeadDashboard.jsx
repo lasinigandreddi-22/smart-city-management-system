@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { 
   AlertTriangle, CheckCircle2, Clock, Users, ArrowUpRight, 
   Filter, Search, UserCheck, Flame, ShieldAlert, Calendar, 
-  MapPin, Building, ChevronRight, ThumbsUp
+  MapPin, Building, ChevronRight, ThumbsUp, IndianRupee
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../services/api';
@@ -205,6 +205,89 @@ export default function AreaHeadDashboard() {
           <span className="text-[10px] text-emerald-700">Completed & verified</span>
         </div>
       </div>
+
+      {/* WARD-WISE FINANCIAL SUMMARY */}
+      {data?.financial_summary && (
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
+          <div className="p-5 border-b border-slate-100 bg-slate-50/60 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-2.5">
+              <div className="w-9 h-9 rounded-xl bg-blue-600 text-white flex items-center justify-center shadow-xs">
+                <IndianRupee className="w-5 h-5" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h2 className="text-base font-bold text-slate-900">Ward-Wise Financial Summary</h2>
+                  <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-50 text-blue-700 border border-blue-200">
+                    {data.financial_summary.ward}
+                  </span>
+                </div>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Municipal revenue, tax demands, and bill collections for your authorized ward.
+                </p>
+              </div>
+            </div>
+            <div className="text-left sm:text-right">
+              <span className="text-xs text-slate-500">Overall Collection Rate</span>
+              <div className="text-lg font-black text-emerald-600">{data.financial_summary.collection_rate}%</div>
+            </div>
+          </div>
+
+          {/* Metric Overview Cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 divide-y sm:divide-y-0 sm:divide-x divide-slate-100 border-b border-slate-100">
+            <div className="p-4 sm:p-5">
+              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Total Demanded</p>
+              <p className="text-2xl font-black text-slate-900 mt-1">₹{data.financial_summary.total_demanded?.toLocaleString('en-IN')}</p>
+              <p className="text-[11px] text-slate-400 mt-0.5">All municipal services in {data.financial_summary.ward}</p>
+            </div>
+            <div className="p-4 sm:p-5">
+              <p className="text-xs font-semibold text-emerald-600 uppercase tracking-wider">Total Received</p>
+              <p className="text-2xl font-black text-emerald-700 mt-1">₹{data.financial_summary.total_received?.toLocaleString('en-IN')}</p>
+              <p className="text-[11px] text-emerald-600/80 mt-0.5">Realized municipal payments</p>
+            </div>
+            <div className="p-4 sm:p-5">
+              <p className="text-xs font-semibold text-amber-600 uppercase tracking-wider">Total Outstanding</p>
+              <p className="text-2xl font-black text-amber-700 mt-1">₹{data.financial_summary.total_outstanding?.toLocaleString('en-IN')}</p>
+              <p className="text-[11px] text-amber-600/80 mt-0.5">Pending collection dues</p>
+            </div>
+          </div>
+
+          {/* Department Breakdown Table */}
+          {data.financial_summary.department_breakdown?.length > 0 && (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-slate-50/75 text-slate-500 font-semibold border-b border-slate-100">
+                  <tr>
+                    <th className="py-3 px-4">Department / Service</th>
+                    <th className="py-3 px-4 text-right">Demanded</th>
+                    <th className="py-3 px-4 text-right">Received</th>
+                    <th className="py-3 px-4 text-right">Outstanding</th>
+                    <th className="py-3 px-4 text-right">Collection Rate</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {data.financial_summary.department_breakdown.map((dept, i) => (
+                    <tr key={i} className="hover:bg-slate-50/50 transition-colors">
+                      <td className="py-3 px-4 font-semibold text-slate-800">{dept.department}</td>
+                      <td className="py-3 px-4 text-right text-slate-700">₹{dept.demanded?.toLocaleString('en-IN')}</td>
+                      <td className="py-3 px-4 text-right text-emerald-600 font-semibold">₹{dept.received?.toLocaleString('en-IN')}</td>
+                      <td className="py-3 px-4 text-right text-amber-600 font-semibold">₹{dept.outstanding?.toLocaleString('en-IN')}</td>
+                      <td className="py-3 px-4 text-right">
+                        <span className={`inline-block px-2 py-0.5 rounded text-[11px] font-bold ${
+                          dept.collection_rate >= 80 ? 'bg-emerald-100 text-emerald-800' :
+                          dept.collection_rate >= 50 ? 'bg-blue-100 text-blue-800' :
+                          'bg-amber-100 text-amber-800'
+                        }`}>
+                          {dept.collection_rate}%
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* KEY WORKFLOW REQUIREMENT: FIELD COMPLETIONS AWAITING AREA HEAD ACKNOWLEDGEMENT */}
       {pendingAcknowledgements.length > 0 && (
