@@ -293,6 +293,17 @@ export default function ProfileMenu() {
                   Profile Information
                 </div>
 
+                {/* System User ID */}
+                <div className="flex items-start space-x-3 bg-blue-50/60 p-2.5 rounded-xl border border-blue-100">
+                  <Shield className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[10px] font-medium text-blue-600">System User ID (Login Username)</p>
+                    <p className="font-mono font-bold text-blue-900">
+                      {user?.profile?.system_user_id || user?.user_id || user?.username}
+                    </p>
+                  </div>
+                </div>
+
                 {/* Full Name */}
                 <div className="flex items-start space-x-3 bg-slate-50 p-2.5 rounded-xl border border-slate-100">
                   <User className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />

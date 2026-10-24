@@ -54,8 +54,10 @@ export function AuthProvider({ children }) {
     }
   };
 
-  const login = async (username, password) => {
-    const data = await api.auth.login({ username, password });
+  const login = async (username, password, selectedRole = null) => {
+    const payload = { username, password };
+    if (selectedRole) payload.role = selectedRole;
+    const data = await api.auth.login(payload);
     localStorage.setItem('smartcity_token', data.token);
     setToken(data.token);
     setUser(data.user);

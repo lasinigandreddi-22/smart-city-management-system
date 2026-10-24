@@ -575,4 +575,98 @@ class SmartCityAPITests(TestCase):
         self.assertEqual(reopen_res.data['status'], 'In Progress')
         self.assertIn('Pressure dropped again', reopen_res.data['return_reason'])
 
+    def test_dual_login_and_role_verification(self):
+        # Assign system_user_id to citizen1
+        self.citizen1.profile.system_user_id = 'CIT-1001'
+        self.citizen1.profile.assigned_zone = 'Ward 1'
+        self.citizen1.profile.save()
+
+        # Login with system_user_id and correct role
+        res = self.client.post('/api/auth/login/', {
+            'username': 'CIT-1001',
+            'password': 'password123',
+            'role': 'CITIZEN'
+        })
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(res.data['user_id'], 'CIT-1001')
+
+        # Login with role mismatch (selecting ADMIN for citizen account)
+        res_mismatch = self.client.post('/api/auth/login/', {
+            'username': 'CIT-1001',
+            'password': 'password123',
+            'role': 'ADMIN'
+        })
+        self.assertEqual(res_mismatch.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertIn('Role mismatch', res_mismatch.data['error'])
+
+    def test_registration_and_ward_uniqueness_enforcement(self):
+        # Register Citizen in Ward 7
+        res1 = self.client.post('/api/auth/register/', {
+            'role': 'CITIZEN',
+            'first_name': 'Meera',
+            'last_name': 'Joshi',
+            'email': 'meera.joshi@example.com',
+            'ward': 'Ward 7',
+            'address': '701 Green Park'
+        })
+        self.assertEqual(res1.status_code, status.HTTP_201_CREATED)
+        self.assertTrue(res1.data['user_id'].startswith('CIT-'))
+        self.assertTrue(len(res1.data['initial_password']) >= 8)
+
+        # Attempt to register second Citizen in Ward 7 -> Must fail due to Ward Uniqueness Rule
+        res2 = self.client.post('/api/auth/register/', {
+            'role': 'CITIZEN',
+            'first_name': 'Rohan',
+            'last_name': 'Kapoor',
+            'email': 'rohan.kapoor@example.com',
+            'ward': 'Ward 7',
+            'address': '702 Green Park'
+        })
+        self.assertEqual(res2.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('already assigned', res2.data['error'])
+
+        # Register Employee in Ward 7 -> Must succeed because role is different
+        res_emp = self.client.post('/api/auth/register/', {
+            'role': 'EMPLOYEE',
+            'first_name': 'Anil',
+            'last_name': 'Verma',
+            'email': 'anil.verma@example.com',
+            'ward': 'Ward 7',
+            'department_name': 'Water Department'
+        })
+        self.assertEqual(res_emp.status_code, status.HTTP_201_CREATED)
+        self.assertTrue(res_emp.data['user_id'].startswith('EMP-'))
+
+        # Prohibit public Admin registration
+        res_admin = self.client.post('/api/auth/register/', {
+            'role': 'ADMIN',
+            'first_name': 'Hacker',
+            'email': 'hacker@example.com',
+            'ward': 'Ward 1'
+        })
+        self.assertEqual(res_admin.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_ward_availability_endpoint(self):
+        # Check ward availability for CITIZEN
+        res = self.client.get('/api/auth/wards/availability/?role=CITIZEN')
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(res.data['wards']), 10)
+        self.assertIn('is_available', res.data['wards'][0])
+
+    def test_admin_password_reset(self):
+        # Admin resets citizen1 password
+        self.client.force_authenticate(user=self.admin_user)
+        res = self.client.post(f'/api/auth/users/{self.citizen1.id}/reset-password/')
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertIn('temporary_password', res.data)
+        new_pwd = res.data['temporary_password']
+
+        # Verify new password works
+        self.client.logout()
+        login_res = self.client.post('/api/auth/login/', {
+            'username': self.citizen1.username,
+            'password': new_pwd
+        })
+        self.assertEqual(login_res.status_code, status.HTTP_200_OK)
+
 

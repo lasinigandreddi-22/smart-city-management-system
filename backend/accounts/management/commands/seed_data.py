@@ -31,6 +31,7 @@ class Command(BaseCommand):
         users_data = [
             {
                 'username': 'admin',
+                'system_user_id': 'ADM-1001',
                 'password': 'Admin@12345',
                 'email': 'admin@smartcity.gov.in',
                 'first_name': 'Chief',
@@ -45,6 +46,7 @@ class Command(BaseCommand):
             },
             {
                 'username': 'citizen1',
+                'system_user_id': 'CIT-1001',
                 'password': 'Citizen@12345',
                 'email': 'citizen1@smartcity.gov.in',
                 'first_name': 'Aarav',
@@ -59,6 +61,7 @@ class Command(BaseCommand):
             },
             {
                 'username': 'citizen2',
+                'system_user_id': 'CIT-1002',
                 'password': 'Citizen@12345',
                 'email': 'citizen2@smartcity.gov.in',
                 'first_name': 'Priya',
@@ -73,6 +76,7 @@ class Command(BaseCommand):
             },
             {
                 'username': 'department1',
+                'system_user_id': 'EMP-1001',
                 'password': 'Dept@12345',
                 'email': 'dept.water@smartcity.gov.in',
                 'first_name': 'Vikram',
@@ -87,6 +91,7 @@ class Command(BaseCommand):
             },
             {
                 'username': 'traffic1',
+                'system_user_id': 'EMP-1002',
                 'password': 'Traffic@12345',
                 'email': 'traffic.officer1@smartcity.gov.in',
                 'first_name': 'Inspector',
@@ -97,10 +102,11 @@ class Command(BaseCommand):
                 'phone': '+91 98765 44444',
                 'address': 'Traffic Enforcement Command Center',
                 'department_name': 'Roads, Sanitation & Traffic',
-                'assigned_zone': 'Ward 1'
+                'assigned_zone': 'Ward 3'
             },
             {
                 'username': 'head1',
+                'system_user_id': 'AH-1001',
                 'password': 'Head@12345',
                 'email': 'head.ward1@smartcity.gov.in',
                 'first_name': 'Devendra',
@@ -115,6 +121,7 @@ class Command(BaseCommand):
             },
             {
                 'username': 'head2',
+                'system_user_id': 'AH-1002',
                 'password': 'Head@12345',
                 'email': 'head.ward2@smartcity.gov.in',
                 'first_name': 'Sunita',
@@ -129,6 +136,7 @@ class Command(BaseCommand):
             },
             {
                 'username': 'department2',
+                'system_user_id': 'EMP-1003',
                 'password': 'Dept@12345',
                 'email': 'dept.electricity@smartcity.gov.in',
                 'first_name': 'Karan',
@@ -143,6 +151,7 @@ class Command(BaseCommand):
             },
             {
                 'username': 'traffic2',
+                'system_user_id': 'EMP-1004',
                 'password': 'Traffic@12345',
                 'email': 'traffic.ward2@smartcity.gov.in',
                 'first_name': 'Officer',
@@ -153,10 +162,11 @@ class Command(BaseCommand):
                 'phone': '+91 98765 66666',
                 'address': 'Ward 2 Patrol Station',
                 'department_name': 'Roads, Sanitation & Traffic',
-                'assigned_zone': 'Ward 2'
+                'assigned_zone': 'Ward 4'
             },
             {
                 'username': 'tax1',
+                'system_user_id': 'EMP-1005',
                 'password': 'Tax@12345',
                 'email': 'tax.collector@smartcity.gov.in',
                 'first_name': 'Ananya',
@@ -167,7 +177,7 @@ class Command(BaseCommand):
                 'phone': '+91 98765 99999',
                 'address': 'Municipal Revenue Building, Room 104',
                 'department_name': 'Property Tax Department',
-                'assigned_zone': 'City-wide'
+                'assigned_zone': 'Ward 5'
             }
         ]
 
@@ -183,16 +193,18 @@ class Command(BaseCommand):
             user.save()
 
             profile, _ = UserProfile.objects.get_or_create(user=user)
+            profile.system_user_id = udata.get('system_user_id')
             profile.role = udata['role']
             profile.phone = udata['phone']
             profile.address = udata['address']
             profile.department_name = udata['department_name']
             profile.assigned_zone = udata['assigned_zone']
+            profile.must_change_password = False
             profile.save()
 
             created_users[udata['username']] = user
             action = "Created" if created else "Updated"
-            self.stdout.write(f"  [{action}] User: {user.username} ({profile.role})")
+            self.stdout.write(f"  [{action}] User: {user.username} [{profile.system_user_id}] ({profile.role}) - Ward: {profile.assigned_zone}")
 
         admin_user = created_users['admin']
         citizen1 = created_users['citizen1']

@@ -52,18 +52,103 @@ def get_user_authorized_wards(user):
                     matched.append(cw)
     return matched if matched else raw_tokens
 
+def generate_user_id(role):
+    """
+    Generates a globally unique system User ID with role-based prefix:
+    CIT-1001, EMP-1001, AH-1001, ADM-1001.
+    """
+    prefix_map = {
+        UserRole.CITIZEN: 'CIT',
+        UserRole.EMPLOYEE: 'EMP',
+        UserRole.SERVICE_DEPARTMENT: 'EMP',
+        UserRole.TRAFFIC_OFFICER: 'EMP',
+        UserRole.AREA_HEAD: 'AH',
+        UserRole.ADMIN: 'ADM',
+    }
+    prefix = prefix_map.get(role, 'USR')
+
+    profiles = UserProfile.objects.filter(system_user_id__startswith=f"{prefix}-")
+    max_num = 1000
+    for p in profiles:
+        if p.system_user_id:
+            try:
+                num = int(p.system_user_id.split('-')[-1])
+                if num > max_num:
+                    max_num = num
+            except ValueError:
+                pass
+
+    next_id = f"{prefix}-{max_num + 1}"
+    while UserProfile.objects.filter(system_user_id=next_id).exists() or User.objects.filter(username=next_id).exists():
+        max_num += 1
+        next_id = f"{prefix}-{max_num + 1}"
+    return next_id
+
+def normalize_ward_name(ward):
+    """
+    Standardizes input like '1', 'ward 1', 'Ward 1' to canonical 'Ward 1'.
+    """
+    if not ward:
+        return ''
+    w = str(ward).strip()
+    if w.isdigit():
+        return f"Ward {w}"
+    for cw in CITY_WARDS:
+        if cw.lower() == w.lower():
+            return cw
+    return w
+
+def validate_role_ward_uniqueness(role, ward, exclude_user_id=None):
+    """
+    Ward Uniqueness Rule:
+    For the same role, no two users can be assigned the same ward number.
+    Returns (is_available, error_message).
+    """
+    if not ward or str(ward).strip().lower() in ['', 'city-wide', 'all', 'all wards']:
+        return True, None
+
+    normalized_ward = normalize_ward_name(ward)
+
+    if role in [UserRole.EMPLOYEE, UserRole.SERVICE_DEPARTMENT, UserRole.TRAFFIC_OFFICER]:
+        roles_to_check = [UserRole.EMPLOYEE, UserRole.SERVICE_DEPARTMENT, UserRole.TRAFFIC_OFFICER]
+        role_label = 'Employee'
+    elif role == UserRole.AREA_HEAD:
+        roles_to_check = [UserRole.AREA_HEAD]
+        role_label = 'Area Head'
+    elif role == UserRole.CITIZEN:
+        roles_to_check = [UserRole.CITIZEN]
+        role_label = 'Citizen'
+    else:
+        return True, None
+
+    query = UserProfile.objects.filter(
+        role__in=roles_to_check,
+        assigned_zone__iexact=normalized_ward
+    )
+    if exclude_user_id:
+        query = query.exclude(user__id=exclude_user_id)
+
+    if query.exists():
+        occupied_by = query.first().user
+        return False, f"{normalized_ward} is already assigned to {role_label} ({occupied_by.get_full_name() or occupied_by.username}). Each ward can only have one user per role."
+
+    return True, None
+
 class UserProfile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile')
+    system_user_id = models.CharField(max_length=30, unique=True, null=True, blank=True)
     role = models.CharField(max_length=30, choices=UserRole.choices, default=UserRole.CITIZEN)
     phone = models.CharField(max_length=20, blank=True, default='')
     address = models.CharField(max_length=255, blank=True, default='')
     department_name = models.CharField(max_length=100, blank=True, default='')
     assigned_zone = models.CharField(max_length=100, blank=True, default='')
+    must_change_password = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
-        return f"{self.user.username} ({self.get_role_display()})"
+        uid = f"[{self.system_user_id}] " if self.system_user_id else ""
+        return f"{uid}{self.user.username} ({self.get_role_display()})"
 
 
 class Notification(models.Model):

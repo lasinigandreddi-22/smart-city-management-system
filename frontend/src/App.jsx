@@ -5,6 +5,7 @@ import DashboardLayout from './layouts/DashboardLayout';
 
 // Auth Pages
 import LoginPage from './pages/LoginPage';
+import RegisterPage from './pages/RegisterPage';
 
 // Citizen Pages
 import CitizenDashboard from './pages/citizen/CitizenDashboard';
@@ -100,8 +101,9 @@ export default function App() {
     <AuthProvider>
       <BrowserRouter>
         <Routes>
-          {/* Public Login Route */}
+          {/* Public Login & Register Routes */}
           <Route path="/login" element={<LoginPage />} />
+          <Route path="/register" element={<RegisterPage />} />
 
           {/* Root Redirect */}
           <Route path="/" element={<RoleBasedHomeRedirect />} />

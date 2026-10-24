@@ -44,9 +44,16 @@ export const api = {
   auth: {
     login: (credentials) => request('/auth/login/', { method: 'POST', body: JSON.stringify(credentials) }),
     logout: () => request('/auth/logout/', { method: 'POST' }),
+    register: (data) => request('/auth/register/', { method: 'POST', body: JSON.stringify(data) }),
     getMe: () => request('/auth/me/'),
     getProfile: () => request('/auth/profile/'),
     updateProfile: (data) => request('/auth/profile/', { method: 'PATCH', body: JSON.stringify(data) }),
+    getWards: () => request('/auth/wards/'),
+    getWardAvailability: (role, excludeUserId = null) => {
+      const params = new URLSearchParams({ role });
+      if (excludeUserId) params.append('exclude_user_id', excludeUserId);
+      return request(`/auth/wards/availability/?${params.toString()}`);
+    },
     getCitizens: () => request('/auth/citizens/'),
     getStaff: (params = {}) => {
       const query = new URLSearchParams(params).toString();
@@ -56,7 +63,9 @@ export const api = {
       const query = new URLSearchParams(params).toString();
       return request(`/auth/users/${query ? `?${query}` : ''}`);
     },
+    provisionUser: (data) => request('/auth/users/', { method: 'POST', body: JSON.stringify(data) }),
     updateUser: (id, data) => request(`/auth/users/${id}/`, { method: 'PATCH', body: JSON.stringify(data) }),
+    resetPassword: (id) => request(`/auth/users/${id}/reset-password/`, { method: 'POST' }),
   },
 
   // Notifications

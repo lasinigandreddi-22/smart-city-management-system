@@ -3,42 +3,93 @@ from rest_framework.response import Response
 from rest_framework.authtoken.models import Token
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.models import User
-from .models import UserProfile, UserRole, Notification
+from django.db.models import Q
+import secrets
+import string
+from .models import (
+    UserProfile, UserRole, Notification, Ward, CITY_WARDS,
+    generate_user_id, validate_role_ward_uniqueness, normalize_ward_name
+)
 from .serializers import UserSerializer, NotificationSerializer
 from .permissions import IsAdminUserRole
+
+def generate_secure_password(length=10):
+    specials = "!@#$%^&*"
+    chars = string.ascii_letters + string.digits + specials
+    while True:
+        pwd = ''.join(secrets.choice(chars) for _ in range(length))
+        if (any(c.islower() for c in pwd) and
+            any(c.isupper() for c in pwd) and
+            any(c.isdigit() for c in pwd) and
+            any(c in specials for c in pwd)):
+            return pwd
 
 class LoginAPIView(views.APIView):
     permission_classes = [permissions.AllowAny]
 
     def post(self, request):
-        username = request.data.get('username', '').strip()
+        raw_username = request.data.get('username', '').strip()
         password = request.data.get('password', '')
+        selected_role = request.data.get('role', '').strip()
 
-        if not username or not password:
+        if not raw_username or not password:
             return Response(
-                {'error': 'Username and password are required.'},
+                {'error': 'Username or User ID and password are required.'},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        user = authenticate(username=username, password=password)
+        # Dual lookup: Find user by system_user_id (e.g. CIT-1001) or by Django username (e.g. citizen1)
+        user_obj = User.objects.filter(
+            Q(username__iexact=raw_username) | Q(profile__system_user_id__iexact=raw_username)
+        ).first()
+
+        if not user_obj:
+            return Response(
+                {'error': 'Invalid username or password.'},
+                status=status.HTTP_401_UNAUTHORIZED
+            )
+
+        user = authenticate(username=user_obj.username, password=password)
         if not user:
             return Response(
                 {'error': 'Invalid username or password.'},
                 status=status.HTTP_401_UNAUTHORIZED
             )
 
+        profile, _ = UserProfile.objects.get_or_create(user=user)
+
+        # Enforce selected role verification against actual user role
+        if selected_role:
+            role_upper = selected_role.upper()
+            is_role_valid = False
+            if role_upper == 'ADMIN' and (profile.role == UserRole.ADMIN or user.is_staff or user.is_superuser):
+                is_role_valid = True
+            elif role_upper == 'AREA_HEAD' and profile.role == UserRole.AREA_HEAD:
+                is_role_valid = True
+            elif role_upper in ['EMPLOYEE', 'STAFF'] and profile.role in [UserRole.EMPLOYEE, UserRole.SERVICE_DEPARTMENT, UserRole.TRAFFIC_OFFICER]:
+                is_role_valid = True
+            elif role_upper == 'CITIZEN' and profile.role == UserRole.CITIZEN:
+                is_role_valid = True
+
+            if not is_role_valid:
+                return Response(
+                    {
+                        'error': f'Role mismatch: This account has "{profile.get_role_display()}" permissions, but you selected "{selected_role}". Please select the correct portal role.'
+                    },
+                    status=status.HTTP_403_FORBIDDEN
+                )
+
         token, _ = Token.objects.get_or_create(user=user)
         # Also log into Django session for browsable API/admin convenience
         login(request, user)
-
-        # Ensure user profile exists
-        profile, _ = UserProfile.objects.get_or_create(user=user)
 
         user_data = UserSerializer(user).data
         return Response({
             'token': token.key,
             'user': user_data,
             'role': profile.role,
+            'user_id': profile.system_user_id or user.username,
+            'must_change_password': profile.must_change_password,
             'message': f'Welcome back, {user.first_name or user.username}!'
         })
 
@@ -211,11 +262,167 @@ class WardListAPIView(views.APIView):
         return Response(data)
 
 
+class RegisterAPIView(views.APIView):
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request):
+        data = request.data
+        role = data.get('role', 'CITIZEN').strip().upper()
+
+        if role == 'ADMIN':
+            return Response(
+                {'error': 'Administrator accounts cannot be registered publicly. Please contact system governance.'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        valid_roles = [UserRole.CITIZEN, UserRole.EMPLOYEE, UserRole.AREA_HEAD]
+        if role not in valid_roles:
+            return Response(
+                {'error': f'Invalid role: {role}. Allowed roles for registration are: CITIZEN, EMPLOYEE, AREA_HEAD.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        first_name = data.get('first_name', '').strip()
+        last_name = data.get('last_name', '').strip()
+        email = data.get('email', '').strip()
+        phone = data.get('phone', '').strip()
+        address = data.get('address', '').strip()
+        raw_ward = data.get('ward') or data.get('assigned_zone') or ''
+        department_name = data.get('department_name', '').strip()
+
+        if not first_name:
+            return Response({'error': 'First name is required.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        if not raw_ward:
+            return Response({'error': 'Ward selection is mandatory for civic registration.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        normalized_ward = normalize_ward_name(raw_ward)
+
+        # Check Ward Uniqueness Rule: no two users of same role can share a ward
+        is_available, error_msg = validate_role_ward_uniqueness(role, normalized_ward)
+        if not is_available:
+            return Response({'error': error_msg}, status=status.HTTP_400_BAD_REQUEST)
+
+        if email:
+            try:
+                validate_email(email)
+            except ValidationError:
+                return Response({'error': 'Invalid email address format.'}, status=status.HTTP_400_BAD_REQUEST)
+            if User.objects.filter(email__iexact=email).exists():
+                return Response({'error': 'A user with this email address already exists.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Password handling: use user password if provided, else generate temporary password
+        user_provided_pwd = data.get('password', '').strip()
+        if user_provided_pwd:
+            initial_pwd = user_provided_pwd
+            must_change = False
+        else:
+            initial_pwd = generate_secure_password(10)
+            must_change = True
+
+        # Generate system-assigned User ID (CIT-1001, EMP-1001, AH-1001)
+        system_user_id = generate_user_id(role)
+
+        # Create user with User ID as username
+        user = User.objects.create_user(
+            username=system_user_id,
+            email=email,
+            password=initial_pwd,
+            first_name=first_name,
+            last_name=last_name
+        )
+
+        profile, _ = UserProfile.objects.get_or_create(user=user)
+        profile.system_user_id = system_user_id
+        profile.role = role
+        profile.phone = phone
+        profile.address = address
+        profile.assigned_zone = normalized_ward
+        profile.department_name = department_name if role == UserRole.EMPLOYEE else ''
+        profile.must_change_password = must_change
+        profile.save()
+
+        return Response({
+            'message': 'Account registered successfully!',
+            'user_id': system_user_id,
+            'username': system_user_id,
+            'initial_password': initial_pwd,
+            'role': role,
+            'ward': normalized_ward,
+            'department_name': profile.department_name,
+            'user': UserSerializer(user).data
+        }, status=status.HTTP_201_CREATED)
+
+class WardAvailabilityAPIView(views.APIView):
+    permission_classes = [permissions.AllowAny]
+
+    def get(self, request):
+        role = request.query_params.get('role', 'CITIZEN').strip().upper()
+        exclude_id = request.query_params.get('exclude_user_id')
+        if exclude_id:
+            try:
+                exclude_id = int(exclude_id)
+            except ValueError:
+                exclude_id = None
+
+        results = []
+        for i in range(1, 11):
+            ward_name = f'Ward {i}'
+            is_available, err = validate_role_ward_uniqueness(role, ward_name, exclude_user_id=exclude_id)
+
+            occupied_by = None
+            if not is_available:
+                roles_to_check = [role]
+                if role in [UserRole.EMPLOYEE, UserRole.SERVICE_DEPARTMENT, UserRole.TRAFFIC_OFFICER]:
+                    roles_to_check = [UserRole.EMPLOYEE, UserRole.SERVICE_DEPARTMENT, UserRole.TRAFFIC_OFFICER]
+                q = UserProfile.objects.filter(role__in=roles_to_check, assigned_zone__iexact=ward_name)
+                if exclude_id:
+                    q = q.exclude(user__id=exclude_id)
+                occupant = q.first()
+                if occupant:
+                    occupied_by = occupant.system_user_id or occupant.user.username
+
+            results.append({
+                'ward_number': i,
+                'ward_name': ward_name,
+                'is_available': is_available,
+                'occupied_by': occupied_by,
+                'role': role
+            })
+
+        return Response({
+            'role': role,
+            'wards': results
+        })
+
+class UserPasswordResetAPIView(views.APIView):
+    permission_classes = [IsAdminUserRole]
+
+    def post(self, request, pk=None):
+        try:
+            target_user = User.objects.select_related('profile').get(pk=pk)
+        except User.DoesNotExist:
+            return Response({'error': 'User not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+        new_password = generate_secure_password(10)
+        target_user.set_password(new_password)
+        target_user.save()
+
+        profile, _ = UserProfile.objects.get_or_create(user=target_user)
+        profile.must_change_password = True
+        profile.save()
+
+        return Response({
+            'message': f'Password for @{target_user.username} has been securely reset.',
+            'temporary_password': new_password,
+            'user_id': profile.system_user_id or target_user.username,
+            'username': target_user.username
+        })
+
 class UserManagementAPIView(views.APIView):
     permission_classes = [IsAdminUserRole]
 
     def get(self, request):
-        from django.db.models import Q
         role_filter = request.query_params.get('role')
         search = request.query_params.get('search')
 
@@ -228,11 +435,71 @@ class UserManagementAPIView(views.APIView):
                 Q(first_name__icontains=search) |
                 Q(last_name__icontains=search) |
                 Q(email__icontains=search) |
+                Q(profile__system_user_id__icontains=search) |
                 Q(profile__department_name__icontains=search) |
                 Q(profile__assigned_zone__icontains=search)
             )
 
         return Response(UserSerializer(queryset, many=True).data)
+
+    def post(self, request):
+        data = request.data
+        role = data.get('role', 'CITIZEN').strip().upper()
+        valid_roles = [r.value for r in UserRole]
+        if role not in valid_roles:
+            return Response({'error': f'Invalid role: {role}.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        first_name = data.get('first_name', '').strip()
+        last_name = data.get('last_name', '').strip()
+        email = data.get('email', '').strip()
+        phone = data.get('phone', '').strip()
+        address = data.get('address', '').strip()
+        department_name = data.get('department_name', '').strip()
+        raw_ward = data.get('ward') or data.get('assigned_zone') or ''
+
+        normalized_ward = normalize_ward_name(raw_ward) if raw_ward else ('City-wide' if role == UserRole.ADMIN else '')
+
+        # Check ward uniqueness
+        if role != UserRole.ADMIN and normalized_ward and normalized_ward.lower() not in ['city-wide', 'all', 'all wards']:
+            is_available, err = validate_role_ward_uniqueness(role, normalized_ward)
+            if not is_available:
+                return Response({'error': err}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Generate system user ID
+        system_user_id = generate_user_id(role)
+        temp_pwd = data.get('password', '').strip() or generate_secure_password(10)
+
+        user = User.objects.create_user(
+            username=system_user_id,
+            email=email,
+            password=temp_pwd,
+            first_name=first_name,
+            last_name=last_name
+        )
+        if role == UserRole.ADMIN:
+            user.is_staff = True
+            user.is_superuser = True
+            user.save()
+
+        profile, _ = UserProfile.objects.get_or_create(user=user)
+        profile.system_user_id = system_user_id
+        profile.role = role
+        profile.phone = phone
+        profile.address = address
+        profile.assigned_zone = normalized_ward
+        profile.department_name = department_name if role == UserRole.EMPLOYEE else ''
+        profile.must_change_password = True
+        profile.save()
+
+        return Response({
+            'message': f'User {system_user_id} provisioned successfully.',
+            'user_id': system_user_id,
+            'username': system_user_id,
+            'initial_password': temp_pwd,
+            'role': role,
+            'ward': normalized_ward,
+            'user': UserSerializer(user).data
+        }, status=status.HTTP_201_CREATED)
 
     def patch(self, request, pk=None):
         if not pk:
@@ -245,6 +512,16 @@ class UserManagementAPIView(views.APIView):
 
         profile, _ = UserProfile.objects.get_or_create(user=target_user)
         data = request.data
+
+        # Determine target role & ward for uniqueness validation
+        target_role = data.get('role', profile.role)
+        raw_ward = data.get('assigned_zone') or data.get('ward')
+        target_ward = normalize_ward_name(raw_ward) if raw_ward is not None else profile.assigned_zone
+
+        if target_role != UserRole.ADMIN and target_ward and target_ward.lower() not in ['city-wide', 'all', 'all wards']:
+            is_available, err = validate_role_ward_uniqueness(target_role, target_ward, exclude_user_id=target_user.id)
+            if not is_available:
+                return Response({'error': err}, status=status.HTTP_400_BAD_REQUEST)
 
         # Update role
         if 'role' in data:
@@ -259,10 +536,8 @@ class UserManagementAPIView(views.APIView):
             profile.department_name = data.get('department_name', '').strip()
 
         # Update assigned_zone / ward
-        if 'assigned_zone' in data:
-            profile.assigned_zone = data.get('assigned_zone', '').strip()
-        elif 'ward' in data:
-            profile.assigned_zone = data.get('ward', '').strip()
+        if raw_ward is not None:
+            profile.assigned_zone = target_ward
 
         # Update name/email if provided
         if 'first_name' in data:
