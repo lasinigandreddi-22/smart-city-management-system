@@ -36,7 +36,7 @@ class Command(BaseCommand):
             self.stdout.write(f"  Cleaned up {deleted_wards[0]} extra wards beyond Ward 6.")
 
         # Clean up legacy demo accounts outside Ward 1 so Wards 2-6 remain open
-        legacy_usernames = ['citizen2', 'head2', 'traffic2']
+        legacy_usernames = ['citizen2', 'head2', 'traffic2', 'sanitation1']
         for lun in legacy_usernames:
             User.objects.filter(username=lun).delete()
 
@@ -128,8 +128,8 @@ class Command(BaseCommand):
                 'is_staff': False,
                 'is_superuser': False,
                 'phone': '+91 98765 44444',
-                'address': 'Ward 1 Traffic Enforcement Command Unit',
-                'department_name': 'Roads and Traffic',
+                'address': 'Ward 1 Traffic Enforcement & Sanitation Command Unit',
+                'department_name': 'Roads, Sanitation & Traffic',
                 'assigned_zone': 'Ward 1'
             },
             {
@@ -145,21 +145,6 @@ class Command(BaseCommand):
                 'phone': '+91 98765 99999',
                 'address': 'Municipal Revenue Building, Room 104',
                 'department_name': 'Property Tax and Bills',
-                'assigned_zone': 'Ward 1'
-            },
-            {
-                'username': 'sanitation1',
-                'system_user_id': 'EMP-1005',
-                'password': 'Sanitation@12345',
-                'email': 'sanitation.lead@smartcity.gov.in',
-                'first_name': 'Ramesh',
-                'last_name': 'Chauhan',
-                'role': UserRole.EMPLOYEE,
-                'is_staff': False,
-                'is_superuser': False,
-                'phone': '+91 98765 66666',
-                'address': 'Ward 1 Sanitation & Waste Processing Depot',
-                'department_name': 'Drainage and Sanitation',
                 'assigned_zone': 'Ward 1'
             }
         ]
@@ -198,7 +183,6 @@ class Command(BaseCommand):
         dept_elec = created_users['department2']
         traffic_user = created_users['traffic1']
         tax_user = created_users['tax1']
-        sanitation_user = created_users['sanitation1']
         head_user = created_users['head1']
 
         # 2. Seed Civic Utility Notices (All 4 Categories)
@@ -402,8 +386,8 @@ class Command(BaseCommand):
                 'is_confirmed': True,
                 'confirmed_by': head_user,
                 'confirmed_at': timezone.now() - timedelta(days=1),
-                'assigned_department': 'Drainage and Sanitation',
-                'assigned_to': sanitation_user,
+                'assigned_department': 'Roads, Sanitation & Traffic',
+                'assigned_to': traffic_user,
                 'assigned_by': head_user,
                 'assigned_at': timezone.now() - timedelta(days=1),
                 'deadline': timezone.now() + timedelta(hours=18),

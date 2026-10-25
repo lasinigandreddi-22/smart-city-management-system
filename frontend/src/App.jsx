@@ -14,6 +14,7 @@ import CitizenDashboard from './pages/citizen/CitizenDashboard';
 import WaterManagementPage from './pages/services/WaterManagementPage';
 import ElectricityManagementPage from './pages/services/ElectricityManagementPage';
 import TrafficManagementPage from './pages/services/TrafficManagementPage';
+import RoadSanitationOperationsPage from './pages/services/RoadSanitationOperationsPage';
 
 // Complaints
 import ComplaintListPage from './pages/complaints/ComplaintListPage';
@@ -125,6 +126,7 @@ export default function App() {
             <Route path="/services/water" element={<WaterManagementPage />} />
             <Route path="/services/electricity" element={<ElectricityManagementPage />} />
             <Route path="/services/traffic" element={<TrafficManagementPage />} />
+            <Route path="/services/road-sanitation" element={<RoadSanitationOperationsPage />} />
 
             {/* Complaints Management */}
             <Route path="/complaints" element={<ComplaintListPage />} />

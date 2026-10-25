@@ -21,7 +21,7 @@ export default function TrafficManagementPage() {
   const [location, setLocation] = useState('');
   const [description, setDescription] = useState('');
 
-  const canManage = role === 'ADMIN' || role === 'TRAFFIC_OFFICER';
+  const canManage = role === 'ADMIN' || role === 'TRAFFIC_OFFICER' || role === 'EMPLOYEE' || role === 'SERVICE_DEPARTMENT';
 
   const loadData = async () => {
     try {

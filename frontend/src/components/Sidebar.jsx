@@ -2,7 +2,7 @@ import React from 'react';
 import { NavLink } from 'react-router-dom';
 import { 
   LayoutDashboard, Droplets, Zap, Car, AlertCircle, PlusCircle, 
-  Receipt, Users, ClipboardList, BellRing, 
+  Receipt, Users, ClipboardList, BellRing, Sparkles,
   ChevronRight, X
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
@@ -18,47 +18,63 @@ export default function Sidebar({ isOpen, onClose }) {
           { to: '/admin/complaints', label: 'All Complaints', icon: ClipboardList },
           { to: '/admin/citizens', label: 'User & Role Directory', icon: Users },
           { to: '/admin/utility-notices', label: 'Utility Notices', icon: BellRing },
-          { to: '/admin/traffic', label: 'Traffic Incidents', icon: Car },
           { to: '/property-tax', label: 'Property Tax Records', icon: Receipt },
         ];
       case 'AREA_HEAD':
         return [
           { to: '/area-head/dashboard', label: 'Area Operations', icon: LayoutDashboard },
           { to: '/area-head/queue', label: 'Area Issue Queue', icon: ClipboardList },
-          { to: '/admin/complaints', label: 'All Complaints', icon: AlertCircle },
           { to: '/admin/utility-notices', label: 'Utility Notices', icon: BellRing },
         ];
       case 'EMPLOYEE':
-      case 'SERVICE_DEPARTMENT': {
+      case 'SERVICE_DEPARTMENT':
+      case 'TRAFFIC_OFFICER': {
         const dept = (user?.profile?.department_name || '').toLowerCase();
-        const links = [
-          { to: '/employee/dashboard', label: 'Employee Dashboard', icon: LayoutDashboard },
-          { to: '/employee/tasks', label: 'Assigned Work Queue', icon: ClipboardList },
-        ];
-        if (dept.includes('traffic') || dept.includes('road')) {
-          links.push(
-            { to: '/admin/traffic', label: 'Incident Control Center', icon: Car },
-            { to: '/services/traffic', label: 'Road Obstructions & Alerts', icon: AlertCircle }
-          );
-        } else if (dept.includes('tax')) {
-          links.push(
-            { to: '/property-tax', label: 'Property Tax Operations', icon: Receipt }
-          );
-        } else {
-          links.push(
+        
+        // 1. Employee (Water) - 3 functionalities
+        if (dept.includes('water')) {
+          return [
+            { to: '/employee/dashboard', label: 'Employee Dashboard', icon: LayoutDashboard },
+            { to: '/employee/tasks', label: 'Assigned Work Queue', icon: ClipboardList },
             { to: '/services/water', label: 'Water Service Operations', icon: Droplets },
-            { to: '/services/electricity', label: 'Electricity Operations', icon: Zap }
-          );
+          ];
         }
-        return links;
-      }
-      case 'TRAFFIC_OFFICER':
+
+        // 2. Employee (Electricity) - 3 functionalities
+        if (dept.includes('electr') || dept.includes('power')) {
+          return [
+            { to: '/employee/dashboard', label: 'Employee Dashboard', icon: LayoutDashboard },
+            { to: '/employee/tasks', label: 'Assigned Work Queue', icon: ClipboardList },
+            { to: '/services/electricity', label: 'Electricity Operations', icon: Zap },
+          ];
+        }
+
+        // 3. Employee (Roads, Sanitation & Traffic) - 4 functionalities
+        if (dept.includes('road') || dept.includes('traffic') || dept.includes('sanitat') || dept.includes('drain')) {
+          return [
+            { to: '/employee/dashboard', label: 'Employee Dashboard', icon: LayoutDashboard },
+            { to: '/employee/tasks', label: 'Assigned Work Queue', icon: ClipboardList },
+            { to: '/services/road-sanitation', label: 'Road Defects & Sanitation Operations', icon: Sparkles },
+            { to: '/services/traffic', label: 'Traffic Operations Handling', icon: Car },
+          ];
+        }
+
+        // 4. Employee (Property Tax) - 3 functionalities
+        if (dept.includes('tax') || dept.includes('bill') || dept.includes('revenue')) {
+          return [
+            { to: '/employee/dashboard', label: 'Employee Dashboard', icon: LayoutDashboard },
+            { to: '/employee/tasks', label: 'Assigned Work Queue', icon: ClipboardList },
+            { to: '/property-tax', label: 'Property Tax Operations', icon: Receipt },
+          ];
+        }
+
+        // Default fallback for unified employee
         return [
           { to: '/employee/dashboard', label: 'Employee Dashboard', icon: LayoutDashboard },
-          { to: '/employee/tasks', label: 'Assigned Traffic Tasks', icon: ClipboardList },
-          { to: '/admin/traffic', label: 'Incident Control Center', icon: Car },
-          { to: '/services/traffic', label: 'Citizen Road Reports', icon: AlertCircle },
+          { to: '/employee/tasks', label: 'Assigned Work Queue', icon: ClipboardList },
+          { to: '/services/water', label: 'Water Service Operations', icon: Droplets },
         ];
+      }
       default: // CITIZEN
         return [
           { to: '/citizen/dashboard', label: 'Citizen Dashboard', icon: LayoutDashboard },

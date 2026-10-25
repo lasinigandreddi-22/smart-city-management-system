@@ -176,8 +176,10 @@ class AdminWardTaxSummaryAPIView(views.APIView):
 
     def get(self, request):
         role = getattr(request.user.profile, 'role', UserRole.CITIZEN)
-        if role != UserRole.ADMIN and not request.user.is_staff and not request.user.is_superuser:
-            return Response({'error': 'Only Administrators can view city-wide ward financial summaries.'}, status=status.HTTP_403_FORBIDDEN)
+        dept = getattr(request.user.profile, 'department_name', '')
+        is_tax_staff = (role in [UserRole.EMPLOYEE, UserRole.SERVICE_DEPARTMENT]) and ('tax' in dept.lower() or 'bill' in dept.lower())
+        if role != UserRole.ADMIN and not request.user.is_staff and not request.user.is_superuser and not is_tax_staff:
+            return Response({'error': 'Only Administrators and Property Tax staff can view ward financial summaries.'}, status=status.HTTP_403_FORBIDDEN)
 
         from accounts.models import CITY_WARDS
         ward_summaries = []

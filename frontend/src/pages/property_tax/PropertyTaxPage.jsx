@@ -16,8 +16,15 @@ export default function PropertyTaxPage() {
   const [payments, setPayments] = useState([]);
   const [wardSummaries, setWardSummaries] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [selectedWardFilter, setSelectedWardFilter] = useState('All');
   const navigate = useNavigate();
+
+  const dept = (user?.profile?.department_name || '').toLowerCase();
+  const isTaxEmployee = (role === 'EMPLOYEE' || role === 'SERVICE_DEPARTMENT') && (dept.includes('tax') || dept.includes('bill'));
+  const isAdmin = role === 'ADMIN';
+  const isAdminOrStaff = isAdmin || isTaxEmployee;
+  const userAssignedWard = user?.profile?.assigned_zone || 'Ward 1';
+
+  const [selectedWardFilter, setSelectedWardFilter] = useState(isTaxEmployee ? userAssignedWard : 'All');
 
   // Payment modal state
   const [activeTaxRecord, setActiveTaxRecord] = useState(null);
@@ -29,8 +36,6 @@ export default function PropertyTaxPage() {
   const [paying, setPaying] = useState(false);
   const [payError, setPayError] = useState('');
   const [paySuccess, setPaySuccess] = useState('');
-
-  const isAdminOrStaff = role === 'ADMIN' || (role === 'EMPLOYEE' && user?.profile?.department_name?.includes('Property Tax'));
 
   const loadData = async () => {
     try {
@@ -56,7 +61,10 @@ export default function PropertyTaxPage() {
 
   useEffect(() => {
     loadData();
-  }, [isAdminOrStaff]);
+    if (isTaxEmployee) {
+      setSelectedWardFilter(userAssignedWard);
+    }
+  }, [isAdminOrStaff, userAssignedWard, isTaxEmployee]);
 
   const openPaymentModal = (taxRecord) => {
     setActiveTaxRecord(taxRecord);
@@ -117,10 +125,37 @@ export default function PropertyTaxPage() {
     });
   });
 
-  // Filtered properties for Admin view
+  // Filtered properties for Admin or Staff view
   const filteredProperties = properties.filter((p) => {
     if (selectedWardFilter === 'All') return true;
     return p.ward_number?.toLowerCase() === selectedWardFilter.toLowerCase();
+  });
+
+  // Ward specific calculations for Property Tax employee
+  let wardTotalAssessed = 0;
+  let wardTotalAnnualTax = 0;
+  let wardTotalPaid = 0;
+  let wardTotalOutstanding = 0;
+
+  filteredProperties.forEach((p) => {
+    wardTotalAssessed += Number(p.assessed_value || 0);
+    p.tax_records?.forEach((t) => {
+      wardTotalAnnualTax += Number(t.annual_tax || 0);
+      wardTotalPaid += Number(t.amount_paid || 0);
+      wardTotalOutstanding += Number(t.outstanding_balance || 0);
+    });
+  });
+
+  const wardCollectionRate = wardTotalAnnualTax > 0 
+    ? ((wardTotalPaid / wardTotalAnnualTax) * 100).toFixed(1) 
+    : '0.0';
+
+  // Ward filtered payments
+  const wardFilteredPayments = payments.filter((pm) => {
+    if (!isTaxEmployee) return true;
+    const prop = properties.find((p) => p.property_ref === pm.property_ref);
+    if (!prop) return true;
+    return prop.ward_number?.toLowerCase() === userAssignedWard.toLowerCase();
   });
 
   return (
@@ -133,17 +168,28 @@ export default function PropertyTaxPage() {
           </div>
           <div>
             <h1 className="text-xl font-bold text-slate-900">
-              {isAdminOrStaff ? 'Property Tax & Civic Revenue Management' : 'Property Tax & Civic Assessment'}
+              {isAdmin 
+                ? 'Property Tax & Civic Revenue Management' 
+                : isTaxEmployee 
+                  ? `Property Tax Operations — ${userAssignedWard}`
+                  : 'Property Tax & Civic Assessment'}
             </h1>
             <p className="text-xs text-slate-500">
-              {isAdminOrStaff 
+              {isAdmin 
                 ? 'City-wide municipal property registrations, ward revenue collections & financial ledgers' 
-                : 'Your registered civic properties, annual municipal taxes, and utility bills'}
+                : isTaxEmployee 
+                  ? `Respective ward civic assessments, annual tax demands, payments received, and collection balance for ${userAssignedWard}`
+                  : 'Your registered civic properties, annual municipal taxes, and utility bills'}
             </p>
           </div>
         </div>
 
         <div className="flex items-center space-x-2">
+          {isTaxEmployee && (
+            <span className="text-xs font-bold px-3 py-1 bg-blue-50 text-blue-700 border border-blue-200 rounded-xl">
+              Assigned: {userAssignedWard}
+            </span>
+          )}
           <span className="text-xs font-semibold px-3 py-1 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-xl flex items-center">
             <ShieldCheck className="w-3.5 h-3.5 mr-1" />
             Simulated Sandbox Billing
@@ -459,155 +505,157 @@ export default function PropertyTaxPage() {
         </>
       ) : (
         /* ========================================================================= */
-        /* ADMIN VIEW: Ward-level financial summary table/cards (Wards 1-6) + Ledger */
+        /* ADMIN & PROPERTY TAX EMPLOYEE VIEW: Respective Ward Data & Financial Ledger */
         /* ========================================================================= */
         <>
-          {/* Admin City-wide Metrics */}
+          {/* Assessment Benchmark Clarity Banner for Staff/Employee */}
+          <div className="p-4 bg-blue-50 border border-blue-200 rounded-xl flex items-start space-x-3 text-xs text-blue-900 shadow-2xs">
+            <Building2 className="w-5 h-5 shrink-0 text-blue-600 mt-0.5" />
+            <div>
+              <strong className="font-bold text-blue-950">Assessment Benchmark & Tax Demand Clarity:</strong>
+              <p className="mt-0.5 text-blue-800 leading-relaxed">
+                Assessed property value is the valuation benchmark used to calculate municipal property tax. 
+                <strong> It is NOT the amount owed.</strong> The total annual tax demanded, actual amount paid, and remaining balance due are tracked separately below for each property.
+              </p>
+            </div>
+          </div>
+
+          {/* Reason for Tax Banner */}
+          <div className="p-4 bg-emerald-50/70 border border-emerald-200 rounded-xl flex items-start space-x-3 text-xs text-emerald-900">
+            <HelpCircle className="w-5 h-5 shrink-0 text-emerald-600 mt-0.5" />
+            <div>
+              <strong className="font-bold text-emerald-950">Civic Purpose & Reason for Payment:</strong>
+              <p className="mt-0.5 text-emerald-800 leading-relaxed">
+                Municipal property taxes fund vital public works across the ward: road resurfacing, street lighting maintenance, clean water delivery, storm drainage, and neighborhood sanitation services.
+              </p>
+            </div>
+          </div>
+
+          {/* Metrics Summary Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <div className="p-5 bg-white rounded-xl border border-slate-200 shadow-xs">
-              <p className="text-xs font-semibold text-slate-400 uppercase">Assessed Asset Value</p>
-              <h3 className="text-xl font-bold text-slate-900 mt-1">₹{totalAssessed.toLocaleString('en-IN')}</h3>
-              <p className="text-[11px] text-slate-400 mt-1">{properties.length} registered properties</p>
+              <p className="text-xs font-semibold text-slate-400 uppercase">
+                {isTaxEmployee ? `Registered Properties (${selectedWardFilter})` : 'Total Assessed Assets'}
+              </p>
+              <h3 className="text-xl font-bold text-slate-900 mt-1">
+                {isTaxEmployee ? filteredProperties.length : `₹${totalAssessed.toLocaleString('en-IN')}`}
+              </h3>
+              <p className="text-[11px] text-slate-400 mt-1">
+                {isTaxEmployee ? `In ${selectedWardFilter}` : `${properties.length} registered properties`}
+              </p>
             </div>
             <div className="p-5 bg-white rounded-xl border border-slate-200 shadow-xs">
-              <p className="text-xs font-semibold text-slate-400 uppercase">Annual Tax Demand</p>
-              <h3 className="text-xl font-bold text-slate-900 mt-1">₹{totalAnnualTax.toLocaleString('en-IN')}</h3>
-              <p className="text-[11px] text-slate-400 mt-1">FY 2025-2026 city-wide assessment</p>
+              <p className="text-xs font-semibold text-slate-400 uppercase">
+                {isTaxEmployee ? `Total Amount Needed Annually` : 'Annual Tax Demand'}
+              </p>
+              <h3 className="text-xl font-bold text-slate-900 mt-1">
+                ₹{(isTaxEmployee ? wardTotalAnnualTax : totalAnnualTax).toLocaleString('en-IN')}
+              </h3>
+              <p className="text-[11px] text-slate-400 mt-1">FY 2025-2026 assessment</p>
             </div>
             <div className="p-5 bg-white rounded-xl border border-slate-200 shadow-xs">
-              <p className="text-xs font-semibold text-slate-400 uppercase">Total Revenue Collected</p>
-              <h3 className="text-xl font-bold text-emerald-600 mt-1">₹{totalPaid.toLocaleString('en-IN')}</h3>
-              <p className="text-[11px] text-slate-400 mt-1">Receipts verified</p>
+              <p className="text-xs font-semibold text-slate-400 uppercase">Total Amount Paid</p>
+              <h3 className="text-xl font-bold text-emerald-600 mt-1">
+                ₹{(isTaxEmployee ? wardTotalPaid : totalPaid).toLocaleString('en-IN')}
+              </h3>
+              <p className="text-[11px] text-slate-400 mt-1">Verified receipts recorded</p>
             </div>
             <div className="p-5 bg-white rounded-xl border border-rose-100 bg-rose-50/20 shadow-xs">
-              <p className="text-xs font-semibold text-rose-500 uppercase">Outstanding Balance</p>
-              <h3 className="text-xl font-bold text-rose-600 mt-1">₹{totalOutstanding.toLocaleString('en-IN')}</h3>
-              <p className="text-[11px] text-rose-400 mt-1">Due before end of financial year</p>
+              <p className="text-xs font-semibold text-rose-500 uppercase">Remaining Balance Due</p>
+              <h3 className="text-xl font-bold text-rose-600 mt-1">
+                ₹{(isTaxEmployee ? wardTotalOutstanding : totalOutstanding).toLocaleString('en-IN')}
+              </h3>
+              <p className="text-[11px] text-rose-400 mt-1">
+                {isTaxEmployee ? `Collection rate: ${wardCollectionRate}%` : 'Due before end of financial year'}
+              </p>
             </div>
           </div>
 
-          {/* Section: Ward-Level Financial Summary (All 6 Wards) */}
-          <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs space-y-5">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b border-slate-100 pb-3">
-              <div>
-                <h3 className="font-bold text-base text-slate-900">Ward-Level Financial Summary</h3>
-                <p className="text-xs text-slate-500">
-                  Comprehensive revenue assessment, tax demand, collected receipts, and recovery rates across all 6 wards
-                </p>
-              </div>
-              <span className="text-xs font-semibold px-2.5 py-1 bg-blue-50 text-blue-700 rounded-lg border border-blue-200">
-                Assessment Period: FY 2025-2026
-              </span>
-            </div>
-
-            {/* 6 Ward Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {wardSummaries.map((w) => (
-                <div key={w.ward} className="p-4 rounded-xl border border-slate-200 bg-slate-50/60 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span className="font-bold text-sm text-slate-900">{w.ward}</span>
-                    <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
-                      {w.collection_rate}% Collected
-                    </span>
-                  </div>
-
-                  <div className="space-y-1.5 text-xs">
-                    <div className="flex justify-between">
-                      <span className="text-slate-500">Tax Demanded:</span>
-                      <span className="font-bold text-slate-800">₹{w.total_demanded.toLocaleString('en-IN')}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-slate-500">Received So Far:</span>
-                      <span className="font-bold text-emerald-600">₹{w.total_received.toLocaleString('en-IN')}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-slate-500">Outstanding:</span>
-                      <span className="font-bold text-rose-600">₹{w.total_outstanding.toLocaleString('en-IN')}</span>
-                    </div>
-                  </div>
-
-                  {/* Progress Bar */}
-                  <div className="w-full bg-slate-200 rounded-full h-1.5 overflow-hidden">
-                    <div 
-                      className="bg-emerald-600 h-1.5 rounded-full" 
-                      style={{ width: `${Math.min(100, w.collection_rate)}%` }}
-                    />
-                  </div>
-
-                  <div className="flex justify-between text-[10px] text-slate-400 pt-1 border-t border-slate-200/60">
-                    <span>{w.properties_count} Properties Registered</span>
-                    <span>{w.tax_records_count} Tax Assessments</span>
-                  </div>
+          {/* Section: Ward-Level Financial Summary (For Admin Only) */}
+          {isAdmin && (
+            <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs space-y-5">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b border-slate-100 pb-3">
+                <div>
+                  <h3 className="font-bold text-base text-slate-900">City-Wide Ward Financial Summary</h3>
+                  <p className="text-xs text-slate-500">
+                    Comprehensive revenue assessment, tax demand, collected receipts, and recovery rates across all 6 wards
+                  </p>
                 </div>
-              ))}
-            </div>
+                <span className="text-xs font-semibold px-2.5 py-1 bg-blue-50 text-blue-700 rounded-lg border border-blue-200">
+                  Assessment Period: FY 2025-2026
+                </span>
+              </div>
 
-            {/* Ward-level Breakdown Table */}
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
-                <thead className="bg-slate-50 border-y border-slate-200 text-slate-600 font-semibold uppercase tracking-wider">
-                  <tr>
-                    <th className="py-2.5 px-3">Ward</th>
-                    <th className="py-2.5 px-3">Assessment Year</th>
-                    <th className="py-2.5 px-3 text-right">Total Demanded</th>
-                    <th className="py-2.5 px-3 text-right">Total Received</th>
-                    <th className="py-2.5 px-3 text-right">Outstanding Balance</th>
-                    <th className="py-2.5 px-3 text-center">Properties</th>
-                    <th className="py-2.5 px-3 text-center">Tax Bills</th>
-                    <th className="py-2.5 px-3 text-right">Collection Rate</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 text-slate-700">
-                  {wardSummaries.map((w) => (
-                    <tr key={w.ward} className="hover:bg-slate-50/80">
-                      <td className="py-3 px-3 font-bold text-slate-900">{w.ward}</td>
-                      <td className="py-3 px-3 text-slate-500">{w.assessment_year}</td>
-                      <td className="py-3 px-3 text-right font-semibold">₹{w.total_demanded.toLocaleString('en-IN')}</td>
-                      <td className="py-3 px-3 text-right font-bold text-emerald-600">₹{w.total_received.toLocaleString('en-IN')}</td>
-                      <td className="py-3 px-3 text-right font-bold text-rose-600">₹{w.total_outstanding.toLocaleString('en-IN')}</td>
-                      <td className="py-3 px-3 text-center">{w.properties_count}</td>
-                      <td className="py-3 px-3 text-center">{w.tax_records_count}</td>
-                      <td className="py-3 px-3 text-right font-bold text-emerald-700">{w.collection_rate}%</td>
-                    </tr>
-                  ))}
-                  {/* City Total Row */}
-                  <tr className="bg-slate-100/70 font-bold border-t-2 border-slate-200 text-slate-900">
-                    <td className="py-3 px-3">City Total (All Wards)</td>
-                    <td className="py-3 px-3 text-slate-500">FY 2025-2026</td>
-                    <td className="py-3 px-3 text-right">₹{totalAnnualTax.toLocaleString('en-IN')}</td>
-                    <td className="py-3 px-3 text-right text-emerald-700">₹{totalPaid.toLocaleString('en-IN')}</td>
-                    <td className="py-3 px-3 text-right text-rose-700">₹{totalOutstanding.toLocaleString('en-IN')}</td>
-                    <td className="py-3 px-3 text-center">{properties.length}</td>
-                    <td className="py-3 px-3 text-center">{properties.reduce((acc, p) => acc + (p.tax_records?.length || 0), 0)}</td>
-                    <td className="py-3 px-3 text-right text-emerald-800">
-                      {totalAnnualTax > 0 ? (totalPaid / totalAnnualTax * 100).toFixed(1) : 0.0}%
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
+              {/* 6 Ward Cards */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {wardSummaries.map((w) => (
+                  <div key={w.ward} className="p-4 rounded-xl border border-slate-200 bg-slate-50/60 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-sm text-slate-900">{w.ward}</span>
+                      <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
+                        {w.collection_rate}% Collected
+                      </span>
+                    </div>
 
-          {/* City-wide Property Records Ledger */}
+                    <div className="space-y-1.5 text-xs">
+                      <div className="flex justify-between">
+                        <span className="text-slate-500">Tax Demanded:</span>
+                        <span className="font-bold text-slate-800">₹{w.total_demanded.toLocaleString('en-IN')}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-slate-500">Received So Far:</span>
+                        <span className="font-bold text-emerald-600">₹{w.total_received.toLocaleString('en-IN')}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-slate-500">Outstanding:</span>
+                        <span className="font-bold text-rose-600">₹{w.total_outstanding.toLocaleString('en-IN')}</span>
+                      </div>
+                    </div>
+
+                    {/* Progress Bar */}
+                    <div className="w-full bg-slate-200 rounded-full h-1.5 overflow-hidden">
+                      <div 
+                        className="bg-emerald-600 h-1.5 rounded-full" 
+                        style={{ width: `${Math.min(100, w.collection_rate)}%` }}
+                      />
+                    </div>
+
+                    <div className="flex justify-between text-[10px] text-slate-400 pt-1 border-t border-slate-200/60">
+                      <span>{w.properties_count} Properties Registered</span>
+                      <span>{w.tax_records_count} Tax Assessments</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Respective Ward Property Tax Records Ledger */}
           <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-slate-100 pb-3">
               <div>
-                <h3 className="font-bold text-base text-slate-900">City-Wide Property Ledger</h3>
+                <h3 className="font-bold text-base text-slate-900">
+                  {isTaxEmployee 
+                    ? `Respective Ward Property Tax Ledger — ${selectedWardFilter}` 
+                    : 'Municipal Property Tax Ledger'}
+                </h3>
                 <p className="text-xs text-slate-500">
-                  Individual property tax accounts with valuation benchmarks and payment statuses
+                  {isTaxEmployee 
+                    ? `Detailed property tax accounts, payment statuses, annual amounts, balances, and payment reasons for ${selectedWardFilter}`
+                    : 'Individual property tax accounts with valuation benchmarks, payment statuses, and tax assessments'}
                 </p>
               </div>
 
-              {/* Ward Filter */}
+              {/* Ward Filter (Admin can filter any ward, Employee can switch or inspect their ward) */}
               <div className="flex items-center space-x-2">
                 <Filter className="w-4 h-4 text-slate-400" />
-                <span className="text-xs text-slate-600 font-medium">Filter Ward:</span>
+                <span className="text-xs text-slate-600 font-medium">Ward:</span>
                 <select
                   value={selectedWardFilter}
                   onChange={(e) => setSelectedWardFilter(e.target.value)}
                   className="text-xs border border-slate-300 rounded-lg px-2.5 py-1 bg-white font-medium"
                 >
-                  <option value="All">All Wards</option>
+                  {isAdmin && <option value="All">All Wards</option>}
                   <option value="Ward 1">Ward 1</option>
                   <option value="Ward 2">Ward 2</option>
                   <option value="Ward 3">Ward 3</option>
@@ -623,33 +671,39 @@ export default function PropertyTaxPage() {
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600 mx-auto"></div>
               </div>
             ) : filteredProperties.length === 0 ? (
-              <p className="text-xs text-slate-400 text-center py-6">No properties match the selected ward filter.</p>
+              <p className="text-xs text-slate-400 text-center py-6">
+                No properties registered in {selectedWardFilter}.
+              </p>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs">
                   <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 font-semibold uppercase tracking-wider">
                     <tr>
-                      <th className="py-2.5 px-3">Property Ref</th>
-                      <th className="py-2.5 px-3">Ward</th>
-                      <th className="py-2.5 px-3">Owner Name</th>
-                      <th className="py-2.5 px-3">Type</th>
-                      <th className="py-2.5 px-3 text-right">Assessed Value</th>
-                      <th className="py-2.5 px-3 text-right">Annual Tax</th>
-                      <th className="py-2.5 px-3 text-right">Paid</th>
-                      <th className="py-2.5 px-3 text-right">Balance</th>
-                      <th className="py-2.5 px-3 text-center">Status</th>
-                      <th className="py-2.5 px-3 text-right">Action</th>
+                      <th className="py-3 px-3">Property Ref & Address</th>
+                      <th className="py-3 px-3">Citizen / Owner</th>
+                      <th className="py-3 px-3">Ward</th>
+                      <th className="py-3 px-3 text-right">Assessed Value (Benchmark)</th>
+                      <th className="py-3 px-3 text-right">Total Amount Needed Annually</th>
+                      <th className="py-3 px-3 text-right">Amount Paid</th>
+                      <th className="py-3 px-3 text-right">Remaining Balance</th>
+                      <th className="py-3 px-3 text-center">Paid or Not</th>
+                      <th className="py-3 px-3">Reason for Payment</th>
+                      <th className="py-3 px-3 text-right">Action</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 text-slate-700">
                     {filteredProperties.map((p) => {
                       const latestTax = p.tax_records?.[0];
+                      const isPaid = latestTax?.payment_status === 'Paid';
+                      const isPartiallyPaid = latestTax?.payment_status === 'Partially Paid';
                       return (
                         <tr key={p.id} className="hover:bg-slate-50/60">
-                          <td className="py-3 px-3 font-mono font-bold text-emerald-700">{p.property_ref}</td>
-                          <td className="py-3 px-3 font-semibold text-slate-900">{p.ward_number}</td>
-                          <td className="py-3 px-3 font-medium text-slate-800">{p.owner_name}</td>
-                          <td className="py-3 px-3 text-slate-500">{p.property_type}</td>
+                          <td className="py-3 px-3">
+                            <span className="font-mono font-bold text-emerald-700 block">{p.property_ref}</span>
+                            <span className="text-[11px] text-slate-500 block max-w-xs">{p.address}</span>
+                          </td>
+                          <td className="py-3 px-3 font-semibold text-slate-900">{p.owner_name}</td>
+                          <td className="py-3 px-3 font-medium text-slate-700">{p.ward_number}</td>
                           <td className="py-3 px-3 text-right font-medium text-slate-600">
                             ₹{Number(p.assessed_value).toLocaleString('en-IN')}
                           </td>
@@ -663,13 +717,22 @@ export default function PropertyTaxPage() {
                             ₹{Number(latestTax?.outstanding_balance || 0).toLocaleString('en-IN')}
                           </td>
                           <td className="py-3 px-3 text-center">
-                            <StatusBadge status={latestTax?.payment_status || 'Unpaid'} />
+                            <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                              isPaid ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' :
+                              isPartiallyPaid ? 'bg-amber-100 text-amber-800 border border-amber-200' :
+                              'bg-rose-100 text-rose-800 border border-rose-200'
+                            }`}>
+                              {isPaid ? 'Fully Paid' : isPartiallyPaid ? 'Partially Paid' : 'Unpaid (Due)'}
+                            </span>
                           </td>
-                          <td className="py-3 px-3 text-right">
+                          <td className="py-3 px-3 text-[11px] text-slate-500 max-w-xs leading-relaxed">
+                            Annual municipal tax covers road maintenance, streetlights, ward sanitation, and emergency civic services.
+                          </td>
+                          <td className="py-3 px-3 text-right whitespace-nowrap">
                             {latestTax && (
                               <button
                                 onClick={() => navigate(`/property-tax/${latestTax.id}`)}
-                                className="px-2 py-1 text-[11px] font-semibold text-slate-700 bg-white border border-slate-300 rounded hover:bg-slate-50"
+                                className="px-2.5 py-1 text-[11px] font-semibold text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors shadow-2xs"
                               >
                                 View Bill
                               </button>
@@ -689,10 +752,14 @@ export default function PropertyTaxPage() {
       {/* Payment Transactions History Table (Demonstration Sandbox) */}
       <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs space-y-4">
         <h3 className="font-bold text-sm text-slate-900">
-          {isAdminOrStaff ? 'City-Wide Payment Transactions Ledger' : 'My Payment Receipts & Transaction History'}
+          {isAdmin 
+            ? 'City-Wide Payment Transactions Ledger' 
+            : isTaxEmployee 
+              ? `Payment Receipts & Transactions History — ${userAssignedWard}`
+              : 'My Payment Receipts & Transaction History'}
         </h3>
 
-        {payments.length === 0 ? (
+        {wardFilteredPayments.length === 0 ? (
           <p className="text-xs text-slate-400 text-center py-6">No payments recorded yet.</p>
         ) : (
           <div className="overflow-x-auto">
@@ -710,7 +777,7 @@ export default function PropertyTaxPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 text-slate-700">
-                {payments.map((pm) => (
+                {wardFilteredPayments.map((pm) => (
                   <tr key={pm.id} className="hover:bg-slate-50/60">
                     <td className="py-3 px-4 font-mono font-bold text-emerald-700">{pm.transaction_ref}</td>
                     <td className="py-3 px-4 font-semibold text-slate-900">{pm.property_ref}</td>

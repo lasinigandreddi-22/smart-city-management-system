@@ -14,7 +14,6 @@ export default function AssignedRequestsPage() {
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState('');
   const [priorityFilter, setPriorityFilter] = useState('');
-  const [categoryFilter, setCategoryFilter] = useState('');
   const [overdueOnly, setOverdueOnly] = useState(false);
   const [sortBy, setSortBy] = useState('-created_at');
   const [search, setSearch] = useState('');
@@ -37,7 +36,6 @@ export default function AssignedRequestsPage() {
       const params = {};
       if (statusFilter) params.status = statusFilter;
       if (priorityFilter) params.priority = priorityFilter;
-      if (categoryFilter) params.category = categoryFilter;
       if (overdueOnly) params.overdue = 'true';
       if (sortBy) params.sort = sortBy;
       if (search) params.search = search;
@@ -53,7 +51,7 @@ export default function AssignedRequestsPage() {
 
   useEffect(() => {
     loadAssigned();
-  }, [statusFilter, priorityFilter, categoryFilter, overdueOnly, sortBy]);
+  }, [statusFilter, priorityFilter, overdueOnly, sortBy]);
 
   const handleSearchSubmit = (e) => {
     e.preventDefault();
@@ -154,7 +152,7 @@ export default function AssignedRequestsPage() {
           </button>
         </form>
 
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 text-xs">
+        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-2 text-xs">
           <div>
             <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Status</label>
             <select
@@ -183,22 +181,6 @@ export default function AssignedRequestsPage() {
               <option value="High">High Priority</option>
               <option value="Medium">Medium Priority</option>
               <option value="Low">Low Priority</option>
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Category</label>
-            <select
-              value={categoryFilter}
-              onChange={(e) => setCategoryFilter(e.target.value)}
-              className="w-full p-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-700"
-            >
-              <option value="">All Categories</option>
-              <option value="Water Supply">Water Supply</option>
-              <option value="Electricity">Electricity</option>
-              <option value="Roads & Traffic">Roads & Traffic</option>
-              <option value="Sanitation">Sanitation</option>
-              <option value="Drainage">Drainage</option>
             </select>
           </div>
 
