@@ -368,7 +368,7 @@ export default function RegisterPage() {
                   </select>
                 </div>
                 <p className="text-[11px] text-slate-500 leading-relaxed">
-                  Notice: Ward availability is verified upon submission based on role allocation rules (1 user per ward for Citizen/Area Head; 1 per department for Employees).
+                  Notice: All configured wards (Ward 1 to Ward 6) support civic registration for multiple citizens (12+ per ward). Unique User IDs (e.g. W1C1, W2C1) are automatically generated upon registration. Administrative policy allows 1 Area Head per ward and 1 Employee per department per ward.
                 </p>
               </div>
 

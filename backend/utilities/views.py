@@ -78,6 +78,11 @@ class WaterServiceRequestListCreateAPIView(views.APIView):
         role = getattr(request.user.profile, 'role', UserRole.CITIZEN)
         if role == UserRole.CITIZEN:
             queryset = WaterServiceRequest.objects.filter(citizen=request.user)
+        elif role in [UserRole.EMPLOYEE, UserRole.SERVICE_DEPARTMENT]:
+            dept = (getattr(request.user.profile, 'department_name', '') or '').lower()
+            if 'water' not in dept and not request.user.is_superuser and not request.user.is_staff:
+                return Response({'error': 'You do not have permission to view Water Department requests.'}, status=status.HTTP_403_FORBIDDEN)
+            queryset = WaterServiceRequest.objects.all()
         else:
             queryset = WaterServiceRequest.objects.all()
         serializer = WaterServiceRequestSerializer(queryset, many=True)
@@ -195,6 +200,11 @@ class ElectricityServiceRequestListCreateAPIView(views.APIView):
         role = getattr(request.user.profile, 'role', UserRole.CITIZEN)
         if role == UserRole.CITIZEN:
             queryset = ElectricityServiceRequest.objects.filter(citizen=request.user)
+        elif role in [UserRole.EMPLOYEE, UserRole.SERVICE_DEPARTMENT]:
+            dept = (getattr(request.user.profile, 'department_name', '') or '').lower()
+            if 'elec' not in dept and 'power' not in dept and not request.user.is_superuser and not request.user.is_staff:
+                return Response({'error': 'You do not have permission to view Electricity Department requests.'}, status=status.HTTP_403_FORBIDDEN)
+            queryset = ElectricityServiceRequest.objects.all()
         else:
             queryset = ElectricityServiceRequest.objects.all()
         serializer = ElectricityServiceRequestSerializer(queryset, many=True)

@@ -1,3 +1,4 @@
+import re
 from django.db import models
 from django.contrib.auth.models import User
 from django.db.models.signals import post_save
@@ -55,13 +56,45 @@ def get_user_authorized_wards(user):
                     matched.append(cw)
     return matched if matched else raw_tokens
 
-def generate_user_id(role):
+def extract_ward_number(ward):
+    if not ward:
+        return 1
+    m = re.search(r'\d+', str(ward))
+    if m:
+        return int(m.group())
+    return 1
+
+def generate_user_id(role, ward=None):
     """
-    Generates a globally unique system User ID with role-based prefix:
-    CIT-1001, EMP-1001, AH-1001, ADM-1001.
+    Generates a globally unique system User ID with role/ward-based prefix:
+    - Citizen: W{ward_number}C{n} (e.g. Ward 1 -> W1C1, W1C2; Ward 2 -> W2C1; Ward 6 -> W6C1).
+    - Employee: EMP-1001, EMP-1002.
+    - Area Head: AH-1001, AH-1002.
+    - Admin: ADM-1001, ADM-1002.
     """
+    if role == UserRole.CITIZEN:
+        w_num = extract_ward_number(ward)
+        prefix = f"W{w_num}C"
+        pattern = re.compile(rf"^{prefix}(\d+)$", re.IGNORECASE)
+        max_c = 0
+        for p in UserProfile.objects.filter(system_user_id__istartswith=prefix):
+            if p.system_user_id:
+                m = pattern.match(p.system_user_id)
+                if m:
+                    max_c = max(max_c, int(m.group(1)))
+        for u in User.objects.filter(username__istartswith=prefix):
+            m = pattern.match(u.username)
+            if m:
+                max_c = max(max_c, int(m.group(1)))
+
+        next_num = max_c + 1
+        cand = f"{prefix}{next_num}"
+        while UserProfile.objects.filter(system_user_id__iexact=cand).exists() or User.objects.filter(username__iexact=cand).exists():
+            next_num += 1
+            cand = f"{prefix}{next_num}"
+        return cand
+
     prefix_map = {
-        UserRole.CITIZEN: 'CIT',
         UserRole.EMPLOYEE: 'EMP',
         UserRole.SERVICE_DEPARTMENT: 'EMP',
         UserRole.TRAFFIC_OFFICER: 'EMP',
@@ -147,15 +180,8 @@ def validate_role_ward_uniqueness(role, ward, department=None, exclude_user_id=N
         return True, None
 
     elif role == UserRole.CITIZEN:
-        query = UserProfile.objects.filter(
-            role=UserRole.CITIZEN,
-            assigned_zone__iexact=normalized_ward
-        )
-        if exclude_user_id:
-            query = query.exclude(user__id=exclude_user_id)
-
-        if query.exists():
-            return False, "This ward is already assigned to another user with your role. Please select another ward."
+        # Every configured ward supports multiple Citizens (capacity >= 12, 20, 50, etc.).
+        # No 1-citizen-per-ward uniqueness restriction.
         return True, None
 
     return True, None

@@ -601,7 +601,7 @@ class SmartCityAPITests(TestCase):
         self.assertIn('Role mismatch', res_mismatch.data['error'])
 
     def test_registration_and_ward_uniqueness_enforcement(self):
-        # Register Citizen in Ward 7
+        # Register Citizen 1 in Ward 7 -> Generates W7C1
         res1 = self.client.post('/api/auth/register/', {
             'role': 'CITIZEN',
             'first_name': 'Meera',
@@ -611,10 +611,10 @@ class SmartCityAPITests(TestCase):
             'address': '701 Green Park'
         })
         self.assertEqual(res1.status_code, status.HTTP_201_CREATED)
-        self.assertTrue(res1.data['user_id'].startswith('CIT-'))
+        self.assertEqual(res1.data['user_id'], 'W7C1')
         self.assertTrue(len(res1.data['initial_password']) >= 8)
 
-        # Attempt to register second Citizen in Ward 7 -> Must fail due to Ward Uniqueness Rule
+        # Register Citizen 2 in Ward 7 -> Must SUCCEED and generate W7C2 (multi-citizen per ward)
         res2 = self.client.post('/api/auth/register/', {
             'role': 'CITIZEN',
             'first_name': 'Rohan',
@@ -623,11 +623,33 @@ class SmartCityAPITests(TestCase):
             'ward': 'Ward 7',
             'address': '702 Green Park'
         })
-        self.assertEqual(res2.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn('already assigned', res2.data['error'])
+        self.assertEqual(res2.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(res2.data['user_id'], 'W7C2')
 
-        # Register Employee in Ward 7 -> Must succeed because role is different
-        res_emp = self.client.post('/api/auth/register/', {
+        # Register Area Head in Ward 7 -> Must succeed
+        res_ah1 = self.client.post('/api/auth/register/', {
+            'role': 'AREA_HEAD',
+            'first_name': 'Kavita',
+            'last_name': 'Patel',
+            'email': 'kavita.patel@example.com',
+            'ward': 'Ward 7'
+        })
+        self.assertEqual(res_ah1.status_code, status.HTTP_201_CREATED)
+        self.assertTrue(res_ah1.data['user_id'].startswith('AH-'))
+
+        # Register second Area Head in Ward 7 -> Must FAIL (1 Area Head per ward)
+        res_ah2 = self.client.post('/api/auth/register/', {
+            'role': 'AREA_HEAD',
+            'first_name': 'Sanjay',
+            'last_name': 'Menon',
+            'email': 'sanjay.menon@example.com',
+            'ward': 'Ward 7'
+        })
+        self.assertEqual(res_ah2.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('already assigned', res_ah2.data['error'])
+
+        # Register Employee in Ward 7, Water Department -> Must succeed
+        res_emp1 = self.client.post('/api/auth/register/', {
             'role': 'EMPLOYEE',
             'first_name': 'Anil',
             'last_name': 'Verma',
@@ -635,8 +657,20 @@ class SmartCityAPITests(TestCase):
             'ward': 'Ward 7',
             'department_name': 'Water Department'
         })
-        self.assertEqual(res_emp.status_code, status.HTTP_201_CREATED)
-        self.assertTrue(res_emp.data['user_id'].startswith('EMP-'))
+        self.assertEqual(res_emp1.status_code, status.HTTP_201_CREATED)
+        self.assertTrue(res_emp1.data['user_id'].startswith('EMP-'))
+
+        # Register second Employee in Ward 7, same department (Water Department) -> Must FAIL
+        res_emp2 = self.client.post('/api/auth/register/', {
+            'role': 'EMPLOYEE',
+            'first_name': 'Sunil',
+            'last_name': 'Sharma',
+            'email': 'sunil.sharma@example.com',
+            'ward': 'Ward 7',
+            'department_name': 'Water Department'
+        })
+        self.assertEqual(res_emp2.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('already assigned', res_emp2.data['error'])
 
         # Prohibit public Admin registration
         res_admin = self.client.post('/api/auth/register/', {
@@ -646,6 +680,34 @@ class SmartCityAPITests(TestCase):
             'ward': 'Ward 1'
         })
         self.assertEqual(res_admin.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_multi_citizen_capacity_and_consecutive_ids(self):
+        # Register 12 citizens in Ward 1: must generate W1C1 to W1C12
+        for i in range(1, 13):
+            res = self.client.post('/api/auth/register/', {
+                'role': 'CITIZEN',
+                'first_name': f'Citizen{i}',
+                'last_name': 'Test',
+                'email': f'citizen{i}.w1@example.com',
+                'ward': 'Ward 1',
+                'address': f'{i} Test Colony, Ward 1'
+            })
+            self.assertEqual(res.status_code, status.HTTP_201_CREATED)
+            self.assertEqual(res.data['user_id'], f'W1C{i}')
+
+    def test_admin_ward_tax_summary(self):
+        # Citizen cannot access ward tax summary
+        self.client.force_authenticate(user=self.citizen1)
+        res_cit = self.client.get('/api/tax/ward-summary/')
+        self.assertEqual(res_cit.status_code, status.HTTP_403_FORBIDDEN)
+
+        # Admin accesses ward tax summary: returns all 6 wards
+        self.client.force_authenticate(user=self.admin_user)
+        res_adm = self.client.get('/api/tax/ward-summary/')
+        self.assertEqual(res_adm.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(res_adm.data), 6)
+        wards = [w['ward'] for w in res_adm.data]
+        self.assertEqual(wards, ['Ward 1', 'Ward 2', 'Ward 3', 'Ward 4', 'Ward 5', 'Ward 6'])
 
     def test_ward_availability_endpoint(self):
         # Check ward availability for CITIZEN

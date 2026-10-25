@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { 
   BellRing, Droplets, Zap, Car, Trash2, Plus, Edit3, 
-  CheckCircle2, AlertCircle, Calendar, Clock, MapPin, Users, XCircle, Sparkles
+  CheckCircle2, AlertCircle, Calendar, Clock, MapPin, Users, XCircle, Sparkles, Receipt
 } from 'lucide-react';
 import api from '../../services/api';
 import Modal from '../../components/Modal';
@@ -13,6 +13,7 @@ const NOTICE_CATEGORIES = [
   { id: 'Power Grid', label: 'Power Grid', icon: Zap, color: 'amber' },
   { id: 'Road and Traffic', label: 'Road and Traffic', icon: Car, color: 'rose' },
   { id: 'Road and Sanitation', label: 'Road and Sanitation', icon: Sparkles, color: 'teal' },
+  { id: 'Property Tax', label: 'Property Tax', icon: Receipt, color: 'emerald' },
 ];
 
 const WARDS = ['Ward 1', 'Ward 2', 'Ward 3', 'Ward 4', 'Ward 5', 'Ward 6', 'City-wide'];
@@ -162,7 +163,7 @@ export default function UtilityNoticesPage() {
           <div>
             <h1 className="text-xl font-bold text-slate-900">Utility & Civic Notices Management</h1>
             <p className="text-xs text-slate-500">
-              Publish and maintain official advisories, disruptions, outages, and maintenance across all 4 utility domains
+              Publish and maintain official advisories, disruptions, outages, and notices across all 5 municipal domains
             </p>
           </div>
         </div>
@@ -178,8 +179,8 @@ export default function UtilityNoticesPage() {
         )}
       </div>
 
-      {/* 4 Category Tabs */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-2 bg-slate-100 p-1.5 rounded-2xl">
+      {/* 5 Category Tabs */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2 bg-slate-100 p-1.5 rounded-2xl">
         {NOTICE_CATEGORIES.map((cat) => {
           const Icon = cat.icon;
           const isActive = activeTab === cat.id;
@@ -386,6 +387,10 @@ export default function UtilityNoticesPage() {
                 <option value="Sanitation Drive">Sanitation & Drainage Drive</option>
                 <option value="Infrastructure Upgrade">Infrastructure Upgrade</option>
                 <option value="Quality Advisory">Quality Advisory</option>
+                <option value="Tax Payment Deadline">Annual Tax Payment Deadline</option>
+                <option value="Assessment Notice">Assessment / Reassessment Notice</option>
+                <option value="Tax Rebate / Scheme">Tax Payment Instructions & Rebates</option>
+                <option value="Tax Advisory">Municipal Tax Advisory</option>
               </select>
             </div>
 

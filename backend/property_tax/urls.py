@@ -2,7 +2,8 @@ from django.urls import path
 from .views import (
     PropertyListCreateAPIView, PropertyDetailAPIView,
     PropertyTaxRecordListCreateAPIView, PropertyTaxRecordDetailAPIView,
-    ProcessSimulatedPaymentAPIView, PaymentRecordListView
+    ProcessSimulatedPaymentAPIView, PaymentRecordListView,
+    AdminWardTaxSummaryAPIView
 )
 
 urlpatterns = [
@@ -12,4 +13,5 @@ urlpatterns = [
     path('tax-records/<int:pk>/', PropertyTaxRecordDetailAPIView.as_view(), name='tax-record-detail'),
     path('pay/', ProcessSimulatedPaymentAPIView.as_view(), name='process-payment'),
     path('payments/', PaymentRecordListView.as_view(), name='payment-list'),
+    path('ward-summary/', AdminWardTaxSummaryAPIView.as_view(), name='ward-tax-summary'),
 ]

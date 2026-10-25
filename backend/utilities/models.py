@@ -105,6 +105,7 @@ class NoticeCategory(models.TextChoices):
     POWER = 'Power Grid', 'Power Grid Notices'
     TRAFFIC = 'Road and Traffic', 'Road and Traffic Notices'
     SANITATION = 'Road and Sanitation', 'Road and Sanitation Notices'
+    PROPERTY_TAX = 'Property Tax', 'Property Tax Notices'
 
 class NoticeAudience(models.TextChoices):
     ALL = 'All', 'Citizens & Employees'

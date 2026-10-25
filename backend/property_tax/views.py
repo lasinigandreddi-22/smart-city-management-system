@@ -168,3 +168,37 @@ class PaymentRecordListView(views.APIView):
         
         serializer = PaymentRecordSerializer(payments, many=True)
         return Response(serializer.data)
+
+from django.db.models import Sum
+
+class AdminWardTaxSummaryAPIView(views.APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        role = getattr(request.user.profile, 'role', UserRole.CITIZEN)
+        if role != UserRole.ADMIN and not request.user.is_staff and not request.user.is_superuser:
+            return Response({'error': 'Only Administrators can view city-wide ward financial summaries.'}, status=status.HTTP_403_FORBIDDEN)
+
+        from accounts.models import CITY_WARDS
+        ward_summaries = []
+        for ward_name in CITY_WARDS:
+            props = Property.objects.filter(ward_number__iexact=ward_name)
+            tax_records = PropertyTaxRecord.objects.filter(property__in=props)
+
+            total_demanded = float(tax_records.aggregate(total=Sum('annual_tax'))['total'] or Decimal('0.00'))
+            total_received = float(tax_records.aggregate(total=Sum('amount_paid'))['total'] or Decimal('0.00'))
+            total_outstanding = float(tax_records.aggregate(total=Sum('outstanding_balance'))['total'] or Decimal('0.00'))
+            collection_rate = round((total_received / total_demanded * 100), 1) if total_demanded > 0 else 0.0
+
+            ward_summaries.append({
+                'ward': ward_name,
+                'properties_count': props.count(),
+                'tax_records_count': tax_records.count(),
+                'assessment_year': 'FY 2025-2026',
+                'total_demanded': total_demanded,
+                'total_received': total_received,
+                'total_outstanding': total_outstanding,
+                'collection_rate': collection_rate,
+            })
+
+        return Response(ward_summaries)

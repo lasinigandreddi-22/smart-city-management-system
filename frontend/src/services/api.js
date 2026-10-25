@@ -148,6 +148,7 @@ export const api = {
 
     processPayment: (data) => request('/tax/pay/', { method: 'POST', body: JSON.stringify(data) }),
     getPayments: () => request('/tax/payments/'),
+    getWardTaxSummary: () => request('/tax/ward-summary/'),
   },
 
   // Dashboards

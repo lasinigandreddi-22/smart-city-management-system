@@ -320,8 +320,8 @@ class RegisterAPIView(views.APIView):
             initial_pwd = generate_secure_password(10)
             must_change = True
 
-        # Generate system-assigned User ID (CIT-1001, EMP-1001, AH-1001)
-        system_user_id = generate_user_id(role)
+        # Generate system-assigned User ID (W1C1 for citizens, EMP-1001, AH-1001)
+        system_user_id = generate_user_id(role, ward=normalized_ward)
 
         # Create user with User ID as username
         user = User.objects.create_user(
@@ -469,7 +469,7 @@ class UserManagementAPIView(views.APIView):
                 return Response({'error': err}, status=status.HTTP_400_BAD_REQUEST)
 
         # Generate system user ID
-        system_user_id = generate_user_id(role)
+        system_user_id = generate_user_id(role, ward=normalized_ward)
         temp_pwd = data.get('password', '').strip() or generate_secure_password(10)
 
         user = User.objects.create_user(

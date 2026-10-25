@@ -129,8 +129,15 @@ export default function ProfileMenu() {
     }
   };
 
+  const effectiveRole = (
+    role || 
+    user?.profile?.role || 
+    (user?.is_superuser || user?.is_staff ? 'ADMIN' : 'CITIZEN')
+  );
+
   const getRoleBadge = (roleName) => {
-    switch (roleName) {
+    const r = roleName || effectiveRole;
+    switch (r) {
       case 'ADMIN':
         return <span className="bg-red-50 text-red-700 border border-red-200 text-[11px] font-bold px-2 py-0.5 rounded-full">Administrator</span>;
       case 'AREA_HEAD':
@@ -297,7 +304,7 @@ export default function ProfileMenu() {
 
                 {/* System User ID */}
                 <div className="flex items-start space-x-3 bg-blue-50/60 p-2.5 rounded-xl border border-blue-100">
-                  <Shield className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
+                  <ShieldCheck className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
                   <div className="min-w-0 flex-1">
                     <p className="text-[10px] font-medium text-blue-600">System User ID (Login Username)</p>
                     <p className="font-mono font-bold text-blue-900">
@@ -543,8 +550,18 @@ export default function ProfileMenu() {
             )}
           </div>
 
-          {/* Action Footer: Logout Button */}
-          <div className="p-3 bg-slate-50 border-t border-slate-200 shrink-0">
+          {/* Action Footer: Profile Link & Logout Button */}
+          <div className="p-3 bg-slate-50 border-t border-slate-200 shrink-0 space-y-2">
+            <button
+              onClick={() => {
+                setIsOpen(false);
+                navigate('/profile');
+              }}
+              className="w-full flex items-center justify-center space-x-2 py-2 px-3 bg-blue-50 hover:bg-blue-100 text-blue-700 font-semibold text-xs rounded-xl transition-colors cursor-pointer border border-blue-200"
+            >
+              <User className="w-3.5 h-3.5" />
+              <span>Open Dedicated Profile Page</span>
+            </button>
             <button
               onClick={handleLogout}
               className="w-full flex items-center justify-center space-x-2 py-2 px-3 bg-red-50 hover:bg-red-100 text-red-600 font-semibold text-xs rounded-xl transition-colors cursor-pointer border border-red-100"

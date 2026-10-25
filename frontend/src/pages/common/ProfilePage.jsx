@@ -6,7 +6,7 @@ import {
 import { useAuth } from '../../context/AuthContext';
 
 export default function ProfilePage() {
-  const { user, role, updateProfile } = useAuth();
+  const { user, role, updateProfile, loading } = useAuth();
 
   const [isEditing, setIsEditing] = useState(false);
   const [firstName, setFirstName] = useState('');
@@ -29,8 +29,15 @@ export default function ProfilePage() {
     }
   }, [user]);
 
+  const effectiveRole = (
+    role || 
+    user?.profile?.role || 
+    (user?.is_superuser || user?.is_staff ? 'ADMIN' : 'CITIZEN')
+  );
+
   const getRoleBadge = (roleName) => {
-    switch (roleName) {
+    const r = roleName || effectiveRole;
+    switch (r) {
       case 'ADMIN':
         return <span className="bg-red-50 text-red-700 border border-red-200 text-xs font-bold px-3 py-1 rounded-full">Administrator</span>;
       case 'AREA_HEAD':
@@ -43,6 +50,25 @@ export default function ProfilePage() {
         return <span className="bg-blue-50 text-blue-700 border border-blue-200 text-xs font-bold px-3 py-1 rounded-full">Citizen</span>;
     }
   };
+
+  if (loading) {
+    return (
+      <div className="py-24 text-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+        <p className="text-xs text-slate-500 mt-3 font-medium">Loading user profile...</p>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div className="py-20 text-center max-w-md mx-auto">
+        <AlertCircle className="w-10 h-10 text-slate-400 mx-auto mb-2" />
+        <h3 className="text-base font-bold text-slate-800">User Profile Unavailable</h3>
+        <p className="text-xs text-slate-500 mt-1">Please sign in to view and manage your profile details.</p>
+      </div>
+    );
+  }
 
   const handleSave = async (e) => {
     e.preventDefault();
